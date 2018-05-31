@@ -1,0 +1,26 @@
+Select A, B, C From X Where A = '1'
+Insert Into X Set A = '1', B = 2, C = 'C'
+Update X Set A = '2' Where A = '1'
+Delete From X Where A = '1'
+Create Table X (A String(50) Index, B Int, C String(5))
+Drop Table X
+
+Statement = SelectStmt | InsertStmt | UpdateStmt | DeleteStmt | CreateStmt | DropStmt ';' ;
+SelectStmt = 'Select', FieldList, 'From', Identifier, AssignmentList ;
+InsertStmt = 'Insert Into', Identifier, 'Set', AssignmentList ;
+UpdateStmt = 'Update', Identifier, 'Set', AssignmentList, 'Where', AssignmentList ;
+DeleteStmt = 'Delete From', Identifier, 'Where', AssignmentList ;
+CreateStmt = 'Create Table', Identifier, '(', ColumnSpecList, ')' ;
+DropStmt = 'Drop Table', Identifier ;
+
+ColumnSpecList = ColumnSpec | ColumnSpecList, ',', ColumnSpec ;
+ColumnSpec = Identifier, ColumnType | Identifier, ColumnType, ColumnOption ;
+ColumnType = 'String(', number, ')' | 'Int' ;
+ColumnOption = 'Index' ;
+
+FieldList = Identifier | FieldList, ',', Identifier ;
+AssignmentList = Assignment | AssignmentList, ',', Assignment ;
+Assignment = Identifier, '=', Value ;
+
+Identifier = { letter, '_' } , { letter | digit | '_' } ;
+Value = "'" character ""'" | '"', character, '"' | number ;
