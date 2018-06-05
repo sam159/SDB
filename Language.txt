@@ -1,11 +1,13 @@
-Select A, B, C From X Where A = '1'
+Select A, B, C From X Where A = '1' AND B <> 2
 Insert Into X Set A = '1', B = 2, C = 'C'
 Update X Set A = '2' Where A = '1'
 Delete From X Where A = '1'
 Create Table X (A String(50) Index, B Int, C String(5))
 Drop Table X
 
+StatementList = StatementList, Statement | Statement ;
 Statement = SelectStmt | InsertStmt | UpdateStmt | DeleteStmt | CreateStmt | DropStmt ';' ;
+
 SelectStmt = 'Select', FieldList, 'From', Identifier, AssignmentList ;
 InsertStmt = 'Insert Into', Identifier, 'Set', AssignmentList ;
 UpdateStmt = 'Update', Identifier, 'Set', AssignmentList, 'Where', AssignmentList ;
@@ -22,5 +24,9 @@ FieldList = Identifier | FieldList, ',', Identifier ;
 AssignmentList = Assignment | AssignmentList, ',', Assignment ;
 Assignment = Identifier, '=', Value ;
 
+ComparisonGroup = Comparison | ComparisonList, 'AND', Comparison
+Comparison = Identifier, Comparator, Value;
+Comparator = '=' | '<>';
+
 Identifier = { letter, '_' } , { letter | digit | '_' } ;
-Value = "'" character ""'" | '"', character, '"' | number ;
+Value = "'", string, "'" | '"', string, '"' | number ;
