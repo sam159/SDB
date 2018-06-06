@@ -17,15 +17,15 @@ Scanner_Result *new_scanner_result() {
 
 void clear_scanner_result(Scanner_Result *result) {
     result->token = T_NONE;
-    result->value_int = 0;
-    if (result->value_str != NULL) {
-        free(result->value_str);
+    result->valueInt = 0;
+    if (result->valueStr != NULL) {
+        free(result->valueStr);
     }
-    result->value_str = NULL;
+    result->valueStr = NULL;
 }
 
 void free_scanner_result(Scanner_Result *result) {
-    if (result->value_str != NULL) {
+    if (result->valueStr != NULL) {
         free(result);
     }
     free(result);
@@ -146,7 +146,7 @@ Scanner_Result *scanner_next_token(Scanner *scanner, Scanner_Result *result) {
         }
         result->token = T_NUMBER;
         //convert number
-        result->value_int = (uint64_t) strtol(intInput, NULL, 10);
+        result->valueInt = (uint64_t) strtol(intInput, NULL, 10);
         return result;
     }
 
@@ -174,7 +174,7 @@ Scanner_Result *scanner_next_token(Scanner *scanner, Scanner_Result *result) {
             }
         } while ((isalnum(scanner_peek_char(scanner)) || scanner_peek_char(scanner) == '_'));
         result->token = T_IDENTIFIER;
-        result->value_str = strdup(ident);
+        result->valueStr = strdup(ident);
         free(ident);
         return result;
     }
@@ -231,7 +231,7 @@ bool scanner_read_string(Scanner *scanner, Scanner_Result *result, char quoteTyp
         } else if (next == quoteType) {
             //end of string
             result->token = T_STRING;
-            result->value_str = strdup(str);
+            result->valueStr = strdup(str);
             free(str);
             return true;
         }
@@ -295,12 +295,11 @@ void scanner_set_error(Scanner *scanner, const char *errText) {
     //Create error msg
     char *errMsg = malloc(sizeof(char) * 128);
 
-    snprintf(errMsg, 128, "Error [%d:%d]: %s", scanner->lineNo, scanner->linePos, errText);
+    snprintf(errMsg, 128, "Error at line %d:%d %s", scanner->lineNo, scanner->linePos, errText);
 
     if (scanner->errMsg != NULL) {
         free(scanner->errMsg);
     }
     scanner->state = SCANSTATE_ERROR;
     scanner->errMsg = errMsg;
-    printf(scanner->errMsg);
 }

@@ -27,13 +27,12 @@ void parse_input(char *input) {
     Scanner_Result *result = NULL;
 
     while ((result = scanner_next_token(scanner, result)) != NULL) {
-
         if (result->token == T_STRING) {
-            printf("Found String: %s\n", result->value_str);
+            printf("Found String: '%s'\n", result->valueStr);
         } else if (result->token == T_IDENTIFIER) {
-            printf("Found Identifier: %s\n", result->value_str);
+            printf("Found Identifier: %s\n", result->valueStr);
         } else if (result->token == T_NUMBER) {
-            printf("Found Number %lld\n", result->value_int);
+            printf("Found Number %lld\n", result->valueInt);
         } else {
             printf("Found Token: %d\n", result->token);
         }
@@ -41,9 +40,9 @@ void parse_input(char *input) {
 
     if (scanner->state == SCANSTATE_ERROR) {
         if (scanner->errMsg != NULL) {
-            printf("%s\n", scanner->errMsg);
+            fprintf(stderr, "%s\n", scanner->errMsg);
         } else {
-            printf("Parse Error!");
+            fprintf(stderr, "Parse Error!\n");
         }
     }
 
@@ -52,11 +51,10 @@ void parse_input(char *input) {
 
 int main() {
 #if defined(_WIN32) || defined(WIN32)
+    //Fix issues with debugging on windows
     setbuf(stdout, 0);
     setbuf(stderr, 0);
 #endif
-
-
     InputBuffer *buffer = input_buffer_new();
 
     while (true) {

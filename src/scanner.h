@@ -45,8 +45,8 @@ typedef enum Scanner_Token_t Scanner_Token;
 
 struct Scanner_Result_t {
     Scanner_Token token;
-    char *value_str;
-    uint64_t value_int;
+    char *valueStr;
+    uint64_t valueInt;
 };
 typedef struct Scanner_Result_t Scanner_Result;
 
