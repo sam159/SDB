@@ -6,10 +6,11 @@
 #define SDB_SQL_H
 
 #include <stddef.h>
+#include <inttypes.h>
 
 union Value_t {
     char *string;
-    int number;
+    uint64_t number;
 };
 typedef union Value_t Value;
 
