@@ -7,61 +7,72 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
-enum Scanner_Token_t {
-    T_NONE,
+#define SCANNER_TOKEN_TYPE_LIST \
+    X(T_NONE) \
+    X(T_STRING) \
+    X(T_NUMBER) \
+    X(T_IDENTIFIER) \
+    X(T_COMMA) \
+    X(T_SEMICOLON) \
+    X(T_PAREN_OPEN) \
+    X(T_PAREN_CLOSE) \
+    X(T_COMP_EQ) \
+    X(T_COMP_NEQ) \
+    X(T_COMP_AND) \
+    X(T_KW_SELECT) \
+    X(T_KW_FROM) \
+    X(T_KW_INSERT) \
+    X(T_KW_INTO) \
+    X(T_KW_SET) \
+    X(T_KW_UPDATE) \
+    X(T_KW_WHERE) \
+    X(T_KW_DELETE) \
+    X(T_KW_CREATE) \
+    X(T_KW_TABLE) \
+    X(T_KW_DROP) \
+    X(T_KW_STRING) \
+    X(T_KW_INT) \
+    X(T_KW_INDEX)
 
-    //Values
-    T_STRING,
-    T_NUMBER,
-    T_IDENTIFIER,
-
-    //Punctuation
-    T_COMMA,
-    T_SEMICOLON,
-
-    //Comparators
-    T_COMP_EQ,
-    T_COMP_NEQ,
-    T_COMP_AND,
-
-    //Keywords
-    K_SELECT,
-    K_FROM,
-    K_INSERT,
-    K_INTO,
-    K_SET,
-    K_UPDATE,
-    K_WHERE,
-    K_DELETE,
-    K_CREATE,
-    K_TABLE,
-    K_DROP,
-    K_STRING,
-    K_INT,
-    K_INDEX
+#define X(t) t,
+enum ScannerTokenType_t {
+    SCANNER_TOKEN_TYPE_LIST
 };
-typedef enum Scanner_Token_t Scanner_Token;
+#undef X
+typedef enum ScannerTokenType_t ScannerTokenType;
 
-struct Scanner_Result_t {
-    Scanner_Token token;
+char* scanner_token_type_to_str(ScannerTokenType tokenType);
+
+struct ScannerToken_t {
+    ScannerTokenType type;
     char *valueStr;
     uint64_t valueInt;
+    size_t lineNo;
+    size_t linePos;
 };
-typedef struct Scanner_Result_t Scanner_Result;
+typedef struct ScannerToken_t ScannerToken;
 
-Scanner_Result *new_scanner_result();
+ScannerToken *new_scanner_token();
 
-void clear_scanner_result(Scanner_Result *result);
+void clear_scanner_token(ScannerToken *result);
 
-void free_scanner_result(Scanner_Result *result);
+void free_scanner_token(ScannerToken *result);
 
-enum Scanner_State_t {
-    SCANSTATE_START,
-    SCANSTATE_ERROR,
-    SCANSTATE_DONE
+#define SCANNER_STATE_LIST \
+    X(SCANSTATE_START) \
+    X(SCANSTATE_ERROR) \
+    X(SCANSTATE_DONE)
+
+#define X(t) t,
+enum ScannerState_t {
+    SCANNER_STATE_LIST
 };
-typedef enum Scanner_State_t Scanner_State;
+#undef X
+typedef enum ScannerState_t ScannerState;
+
+char * scanner_state_to_str(ScannerState state);
 
 struct Scanner_t {
     char *input;
@@ -69,7 +80,10 @@ struct Scanner_t {
     size_t lineNo;
     size_t linePos;
     size_t pos;
-    Scanner_State state;
+    ScannerState state;
+    ScannerToken **buffer;
+    size_t bufferLength;
+    size_t bufferIndex;
 };
 typedef struct Scanner_t Scanner;
 
@@ -77,11 +91,13 @@ Scanner *new_scanner(char *input);
 
 void free_scanner(Scanner *scanner);
 
-void reuse_scanner(Scanner *scanner, char *input);
+void reset_scanner(Scanner *scanner, char *input);
 
-Scanner_Result *scanner_next_token(Scanner *scanner, Scanner_Result *result);
+void scanner_push_buffer(Scanner *scanner, ScannerToken *token);
 
-bool scanner_read_string(Scanner *scanner, Scanner_Result *result, char quoteType);
+ScannerToken *scanner_next_token(Scanner *scanner, ScannerToken *token);
+
+bool scanner_read_string(Scanner *scanner, ScannerToken *result, char quoteType);
 
 char scanner_next_char(Scanner *scanner);
 

@@ -9,72 +9,129 @@
 #include <stdio.h>
 #include "scanner.h"
 
-Scanner_Result *new_scanner_result() {
-    Scanner_Result *result = malloc(sizeof(Scanner_Result));
-    clear_scanner_result(result);
+char* scanner_token_type_to_str(ScannerTokenType tokenType) {
+#define X(t) case t: return #t;
+    switch (tokenType) {
+        SCANNER_TOKEN_TYPE_LIST
+        default:
+            return "UNKNOWN";
+    }
+#undef X
+}
+
+ScannerToken *new_scanner_token() {
+    ScannerToken *result = malloc(sizeof(ScannerToken));
+    clear_scanner_token(result);
     return result;
 }
 
-void clear_scanner_result(Scanner_Result *result) {
-    result->token = T_NONE;
+void clear_scanner_token(ScannerToken *result) {
+    result->type = T_NONE;
     result->valueInt = 0;
     if (result->valueStr != NULL) {
         free(result->valueStr);
     }
     result->valueStr = NULL;
+    result->lineNo = 0;
+    result->linePos = 0;
 }
 
-void free_scanner_result(Scanner_Result *result) {
+void free_scanner_token(ScannerToken *result) {
     if (result->valueStr != NULL) {
         free(result);
     }
     free(result);
 }
 
+char * scanner_state_to_str(ScannerState state) {
+#define X(t) case t: return #t;
+    switch (state) {
+        SCANNER_STATE_LIST
+        default:
+            return "UNKNOWN";
+    }
+#undef X
+}
+
 Scanner *new_scanner(char *input) {
     Scanner *scanner = malloc(sizeof(Scanner));
-    scanner->input = input;
-    scanner->pos = 0;
+    scanner->errMsg = NULL;
+    scanner->state = SCANSTATE_START;
+    scanner->buffer = NULL;
+    scanner->bufferIndex = 0;
+    scanner->bufferLength = 0;
     scanner->lineNo = 1;
     scanner->linePos = 1;
-    scanner->state = SCANSTATE_START;
-    scanner->errMsg = NULL;
+    scanner->input = input;
+    scanner->pos = 0;
     return scanner;
 }
 
 void free_scanner(Scanner *scanner) {
-    if (scanner->input != NULL) {
-        free(scanner->input);
-    }
+    reset_scanner(scanner, NULL);
     free(scanner);
 }
 
-void reuse_scanner(Scanner *scanner, char *input) {
+void reset_scanner(Scanner *scanner, char *input) {
+    scanner->pos = 0;
+    scanner->lineNo = 1;
+    scanner->linePos = 1;
+    scanner->state = SCANSTATE_START;
     if (scanner->input != NULL) {
         free(scanner->input);
     }
     scanner->input = input;
     if (scanner->errMsg != NULL) {
-        free(scanner->input);
-        scanner->errMsg = NULL;
+        free(scanner->errMsg);
     }
-    scanner->pos = 0;
-    scanner->lineNo = 1;
-    scanner->linePos = 1;
-    scanner->state = SCANSTATE_START;
     scanner->errMsg = NULL;
+    if (scanner->bufferIndex > 0) {
+        for (size_t i = 0; i < scanner->bufferIndex; i++) {
+            free_scanner_token(scanner->buffer[i]);
+        }
+        scanner->bufferIndex = 0;
+    }
+    if (scanner->bufferLength > 0) {
+        free(scanner->buffer);
+        scanner->buffer = NULL;
+    }
 }
 
-Scanner_Result *scanner_next_token(Scanner *scanner, Scanner_Result *result) {
+void scanner_push_buffer(Scanner *scanner, ScannerToken *token) {
+    if (scanner->bufferLength == 0) {
+        scanner->bufferLength = 1;
+        scanner->buffer = malloc(scanner->bufferLength * sizeof(ScannerToken*));
+    } else if (scanner->bufferIndex + 1 == scanner->bufferLength) {
+        scanner->bufferLength *= 2;
+        scanner->buffer = realloc(scanner->buffer, scanner->bufferLength * sizeof(ScannerToken*));
+    }
+    scanner->buffer[scanner->bufferIndex++] = token;
+}
+
+ScannerToken *scanner_next_token(Scanner *scanner, ScannerToken *token) {
+    //Return if already done
     if (scanner->state == SCANSTATE_DONE || scanner->state == SCANSTATE_ERROR) {
-        if (result != NULL) free_scanner_result(result);
+        if (token != NULL) free_scanner_token(token);
         return NULL;
     }
-    if (result == NULL) {
-        result = new_scanner_result();
-    } else {
-        clear_scanner_result(result);
+
+    if (scanner->bufferIndex > 0) {
+        if (token != NULL) {
+            free_scanner_token(token);
+        }
+        scanner->bufferIndex--;
+        token = scanner->buffer[scanner->bufferIndex];
+        scanner->buffer[scanner->bufferIndex] = NULL;
+        return token;
     }
+
+    //Setup result
+    if (token == NULL) {
+        token = new_scanner_token();
+    } else {
+        clear_scanner_token(token);
+    }
+
     //Consume white space
     while (scanner_peek_char(scanner) != 0 && isspace(scanner_peek_char(scanner))) {
         if (scanner_next_char(scanner) == '\n') {
@@ -82,51 +139,67 @@ Scanner_Result *scanner_next_token(Scanner *scanner, Scanner_Result *result) {
             scanner->linePos = 1;
         }
     }
+
     //Check for end of string
     if (scanner_peek_char(scanner) == 0) {
         scanner->state = SCANSTATE_DONE;
-        free_scanner_result(result);
+        free_scanner_token(token);
         return NULL;
     }
 
+    //Record position of token in the input
+    token->lineNo = scanner->lineNo;
+    token->linePos = scanner->linePos;
+
     //Keywords
-    if (scanner_match(scanner, "select", true)) result->token = K_SELECT;
-    else if (scanner_match(scanner, "from", true)) result->token = K_FROM;
-    else if (scanner_match(scanner, "insert", true)) result->token = K_INSERT;
-    else if (scanner_match(scanner, "into", true)) result->token = K_INTO;
-    else if (scanner_match(scanner, "set", true)) result->token = K_SET;
-    else if (scanner_match(scanner, "update", true)) result->token = K_UPDATE;
-    else if (scanner_match(scanner, "where", true)) result->token = K_WHERE;
-    else if (scanner_match(scanner, "delete", true)) result->token = K_DELETE;
-    else if (scanner_match(scanner, "create", true)) result->token = K_CREATE;
-    else if (scanner_match(scanner, "table", true)) result->token = K_TABLE;
-    else if (scanner_match(scanner, "drop", true)) result->token = K_DROP;
-    else if (scanner_match(scanner, "string", true)) result->token = K_STRING;
-    else if (scanner_match(scanner, "int", true)) result->token = K_INT;
-    else if (scanner_match(scanner, "index", true)) result->token = K_INDEX;
-    if (result->token != T_NONE) {
-        return result;
+    if (scanner_match(scanner, "select", true)) token->type = T_KW_SELECT;
+    else if (scanner_match(scanner, "from", true)) token->type = T_KW_FROM;
+    else if (scanner_match(scanner, "insert", true)) token->type = T_KW_INSERT;
+    else if (scanner_match(scanner, "into", true)) token->type = T_KW_INTO;
+    else if (scanner_match(scanner, "set", true)) token->type = T_KW_SET;
+    else if (scanner_match(scanner, "update", true)) token->type = T_KW_UPDATE;
+    else if (scanner_match(scanner, "where", true)) token->type = T_KW_WHERE;
+    else if (scanner_match(scanner, "delete", true)) token->type = T_KW_DELETE;
+    else if (scanner_match(scanner, "create", true)) token->type = T_KW_CREATE;
+    else if (scanner_match(scanner, "table", true)) token->type = T_KW_TABLE;
+    else if (scanner_match(scanner, "drop", true)) token->type = T_KW_DROP;
+    else if (scanner_match(scanner, "string", true)) token->type = T_KW_STRING;
+    else if (scanner_match(scanner, "int", true)) token->type = T_KW_INT;
+    else if (scanner_match(scanner, "integer", true)) token->type = T_KW_INT;
+    else if (scanner_match(scanner, "index", true)) token->type = T_KW_INDEX;
+    if (token->type != T_NONE) {
+        return token;
     }
 
     //Comparators
-    if (scanner_match(scanner, "=", false)) result->token = T_COMP_EQ;
-    if (scanner_match(scanner, "<>", false)) result->token = T_COMP_NEQ;
-    if (scanner_match(scanner, "and", true)) result->token = T_COMP_AND;
-    if (result->token != T_NONE) {
-        return result;
+    if (scanner_match(scanner, "=", false)) token->type = T_COMP_EQ;
+    else if (scanner_match(scanner, "<>", false)) token->type = T_COMP_NEQ;
+    else if (scanner_match(scanner, "and", true)) token->type = T_COMP_AND;
+    if (token->type != T_NONE) {
+        return token;
     }
 
     //Punctuation
-    if (scanner_peek_char(scanner) == ',') {
-        scanner_next_char(scanner);
-        result->token = T_COMMA;
+    char nextChar = scanner_peek_char(scanner);
+    switch (nextChar) {
+        case ',':
+            token->type = T_COMMA;
+            break;
+        case ';':
+            token->type = T_SEMICOLON;
+            break;
+        case '(':
+            token->type = T_PAREN_OPEN;
+            break;
+        case ')':
+            token->type = T_PAREN_CLOSE;
+            break;
+        default:
+            break;
     }
-    if (scanner_peek_char(scanner) == ';') {
+    if (token->type != T_NONE) {
         scanner_next_char(scanner);
-        result->token = T_SEMICOLON;
-    }
-    if (result->token != T_NONE) {
-        return result;
+        return token;
     }
 
     //Numbers
@@ -141,22 +214,22 @@ Scanner_Result *scanner_next_token(Scanner *scanner, Scanner_Result *result) {
         if (isdigit(scanner_peek_char(scanner))) {
             //Exceed length of int array!
             scanner_set_error(scanner, "Number exceeded allowed length");
-            free_scanner_result(result);
+            free_scanner_token(token);
             return NULL;
         }
-        result->token = T_NUMBER;
+        token->type = T_NUMBER;
         //convert number
-        result->valueInt = (uint64_t) strtol(intInput, NULL, 10);
-        return result;
+        token->valueInt = (uint64_t) strtol(intInput, NULL, 10);
+        return token;
     }
 
     //Strings
     if (scanner_peek_char(scanner) == '"' || scanner_peek_char(scanner) == '\'') {
-        if (scanner_read_string(scanner, result, scanner_next_char(scanner)) == false) {
-            free_scanner_result(result);
+        if (scanner_read_string(scanner, token, scanner_next_char(scanner)) == false) {
+            free_scanner_token(token);
             return NULL;
         }
-        return result;
+        return token;
     }
 
     //Identifiers
@@ -173,19 +246,19 @@ Scanner_Result *scanner_next_token(Scanner *scanner, Scanner_Result *result) {
                 ident = realloc(ident, sizeof(char) * ident_size);
             }
         } while ((isalnum(scanner_peek_char(scanner)) || scanner_peek_char(scanner) == '_'));
-        result->token = T_IDENTIFIER;
-        result->valueStr = strdup(ident);
+        token->type = T_IDENTIFIER;
+        token->valueStr = strdup(ident);
         free(ident);
-        return result;
+        return token;
     }
 
     //Nothing matched
-    scanner_set_error(scanner, "Unknown text");
-    free_scanner_result(result);
+    scanner_set_error(scanner, "Unexpected input");
+    free_scanner_token(token);
     return NULL;
 }
 
-bool scanner_read_string(Scanner *scanner, Scanner_Result *result, char quoteType) {
+bool scanner_read_string(Scanner *scanner, ScannerToken *result, char quoteType) {
     char next = 0;
 
     size_t length = 8;
@@ -230,7 +303,7 @@ bool scanner_read_string(Scanner *scanner, Scanner_Result *result, char quoteTyp
             }
         } else if (next == quoteType) {
             //end of string
-            result->token = T_STRING;
+            result->type = T_STRING;
             result->valueStr = strdup(str);
             free(str);
             return true;
@@ -295,7 +368,7 @@ void scanner_set_error(Scanner *scanner, const char *errText) {
     //Create error msg
     char *errMsg = malloc(sizeof(char) * 128);
 
-    snprintf(errMsg, 128, "Error at line %d:%d %s", scanner->lineNo, scanner->linePos, errText);
+    snprintf(errMsg, 128, "[%d:%d]: %s", scanner->lineNo, scanner->linePos, errText);
 
     if (scanner->errMsg != NULL) {
         free(scanner->errMsg);

@@ -20,17 +20,18 @@ void free_value(Value *value) {
 }
 
 Comparison *new_comparison() {
-    Comparison* comparison = malloc(sizeof(Comparison));
+    Comparison *comparison = malloc(sizeof(Comparison));
     comparison->identifier = NULL;
     comparison->value = NULL;
     comparison->comp = COMP_NONE;
     return comparison;
 }
+
 void free_comparison(Comparison *comparison) {
     if (comparison->value != NULL) {
         free(comparison->value);
     }
-    if(comparison->identifier != NULL) {
+    if (comparison->identifier != NULL) {
         free(comparison->identifier);
     }
     free(comparison);
@@ -42,9 +43,10 @@ ComparisonGroup *new_comparision_group() {
     group->length = 0;
     return group;
 }
-void free_comparison_group(ComparisonGroup* group) {
+
+void free_comparison_group(ComparisonGroup *group) {
     if (group->length > 0) {
-        for(size_t i=0; i<group->length; i++) {
+        for (size_t i = 0; i < group->length; i++) {
             free(group->comparisons[i]);
         }
         free(group->comparisons);
@@ -52,9 +54,10 @@ void free_comparison_group(ComparisonGroup* group) {
     }
     free(group);
 }
+
 void append_comparison_group(ComparisonGroup *group, Comparison *comparison) {
     group->length++;
-    group->comparisons = realloc(group->comparisons, sizeof(Assignment) * group->length);
+    group->comparisons = realloc(group->comparisons, sizeof(Assignment *) * group->length);
     group->comparisons[group->length - 1] = comparison;
 }
 
@@ -94,7 +97,7 @@ void free_assignment_list(AssignmentList *assignmentList) {
 
 void append_assignment_list(AssignmentList *list, Assignment *assignment) {
     list->length++;
-    list->assignments = realloc(list->assignments, sizeof(Assignment) * list->length);
+    list->assignments = realloc(list->assignments, sizeof(Assignment *) * list->length);
     list->assignments[list->length - 1] = assignment;
 }
 
@@ -160,7 +163,7 @@ void free_column_spec_list(ColumnSpecList *list) {
 
 void append_column_spec_list(ColumnSpecList *list, ColumnSpec *spec) {
     list->length++;
-    list->columns = realloc(list->columns, sizeof(ColumnSpec) * list->length);
+    list->columns = realloc(list->columns, sizeof(ColumnSpec *) * list->length);
     list->columns[list->length - 1] = spec;
 }
 
@@ -325,6 +328,6 @@ void free_statement_list(StatementList *list) {
 
 void append_statement_list(StatementList *list, Statement *statement) {
     list->length++;
-    list->statements = realloc(list->statements, sizeof(Statement) * list->length);
+    list->statements = realloc(list->statements, sizeof(Statement *) * list->length);
     list->statements[list->length - 1] = statement;
 }

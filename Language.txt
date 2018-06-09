@@ -8,7 +8,7 @@ Drop Table X
 StatementList = StatementList, Statement | Statement ;
 Statement = SelectStmt | InsertStmt | UpdateStmt | DeleteStmt | CreateStmt | DropStmt ';' ;
 
-SelectStmt = 'Select', FieldList, 'From', Identifier, AssignmentList ;
+SelectStmt = 'Select', FieldList, 'From', Identifier, ['Where', ComparisonGroup] ;
 InsertStmt = 'Insert Into', Identifier, 'Set', AssignmentList ;
 UpdateStmt = 'Update', Identifier, 'Set', AssignmentList, 'Where', AssignmentList ;
 DeleteStmt = 'Delete From', Identifier, 'Where', AssignmentList ;
@@ -17,7 +17,7 @@ DropStmt = 'Drop Table', Identifier ;
 
 ColumnSpecList = ColumnSpec | ColumnSpecList, ',', ColumnSpec ;
 ColumnSpec = Identifier, ColumnType | Identifier, ColumnType, ColumnOption ;
-ColumnType = 'String(', number, ')' | 'Int' ;
+ColumnType = 'String', '(', number, ')' | 'Int' | 'Integer' ;
 ColumnOption = 'Index' ;
 
 FieldList = Identifier | FieldList, ',', Identifier ;

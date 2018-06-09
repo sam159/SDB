@@ -79,5 +79,3 @@ build
 
 
 # End of https://www.gitignore.io/api/cmake,clion
-
-cmake-build-debug*

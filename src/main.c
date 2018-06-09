@@ -4,6 +4,7 @@
 
 #include "InputBuffer.h"
 #include "scanner.h"
+#include "parser.h"
 
 void prompt() {
     printf("SDB> ");
@@ -24,29 +25,23 @@ void read_input(InputBuffer *buffer) {
 
 void parse_input(char *input) {
     Scanner *scanner = new_scanner(strdup(input));
-    Scanner_Result *result = NULL;
+    Parser *parser = new_parser();
 
-    while ((result = scanner_next_token(scanner, result)) != NULL) {
-        if (result->token == T_STRING) {
-            printf("Found String: '%s'\n", result->valueStr);
-        } else if (result->token == T_IDENTIFIER) {
-            printf("Found Identifier: %s\n", result->valueStr);
-        } else if (result->token == T_NUMBER) {
-            printf("Found Number %lld\n", result->valueInt);
-        } else {
-            printf("Found Token: %d\n", result->token);
-        }
+    ParserNode *node = parser_parse(parser, scanner);
+
+    if (parser->status == PARSESTATE_ERROR) {
+        printf("Parse Error: %s\n", parser->errMsg);
     }
 
-    if (scanner->state == SCANSTATE_ERROR) {
-        if (scanner->errMsg != NULL) {
-            fprintf(stderr, "%s\n", scanner->errMsg);
-        } else {
-            fprintf(stderr, "Parse Error!\n");
-        }
+    if (node != NULL) {
+        printf("%s\n", input);
+        parser_print_node_tree(node, 0);
+        free_parser_node(node);
     }
 
     free_scanner(scanner);
+    free_parser(parser);
+
 }
 
 int main() {
@@ -55,6 +50,7 @@ int main() {
     setbuf(stdout, 0);
     setbuf(stderr, 0);
 #endif
+
     InputBuffer *buffer = input_buffer_new();
 
     while (true) {
