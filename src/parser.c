@@ -369,6 +369,7 @@ ParserNode *parser_parse(Parser *parser, Scanner *scanner) {
                         break;
                 }
             }
+                break;
             case NODE_DROP_STMT: {
                 NEXT_TOKEN();
                 if (token == NULL || token->type != T_IDENTIFIER) {
