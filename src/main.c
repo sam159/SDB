@@ -36,6 +36,11 @@ void parse_input(char *input) {
     if (node != NULL) {
         printf("%s\n", input);
         parser_print_node_tree(node, 0);
+
+        StatementList* list = parser_node_convert(node);
+        print_statement_list(list);
+        free_statement_list(list);
+
         free_parser_node(node);
     }
 

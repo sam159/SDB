@@ -8,11 +8,19 @@
 #include <stddef.h>
 #include <inttypes.h>
 
-union Value_t {
-    char *string;
-    uint64_t number;
+enum ValueType_t {
+    VALUE_NONE,
+    VALUE_STRING,
+    VALUE_NUMBER
 };
-typedef union Value_t Value;
+typedef enum ValueType_t ValueType;
+
+struct Value_t {
+    ValueType type;
+    char *string;
+    int64_t number;
+};
+typedef struct Value_t Value;
 
 Value *new_value();
 
@@ -33,6 +41,7 @@ struct Comparison_t {
 typedef struct Comparison_t Comparison;
 
 Comparison *new_comparison();
+
 void free_comparison(Comparison *comparison);
 
 struct ComparisonGroup_t {
@@ -42,7 +51,9 @@ struct ComparisonGroup_t {
 typedef struct ComparisonGroup_t ComparisonGroup;
 
 ComparisonGroup *new_comparision_group();
-void free_comparison_group(ComparisonGroup* group);
+
+void free_comparison_group(ComparisonGroup *group);
+
 void append_comparison_group(ComparisonGroup *group, Comparison *comparison);
 
 struct Assignment_t {
@@ -119,7 +130,7 @@ void append_column_spec_list(ColumnSpecList *list, ColumnSpec *spec);
 struct SelectStmt_t {
     FieldList *fields;
     char *tableName;
-    AssignmentList *where;
+    ComparisonGroup *where;
 };
 typedef struct SelectStmt_t SelectStmt;
 
@@ -140,7 +151,7 @@ void free_insert_stmt(InsertStmt *stmt);
 struct UpdateStmt_t {
     char *tableName;
     AssignmentList *values;
-    AssignmentList *where;
+    ComparisonGroup *where;
 };
 typedef struct UpdateStmt_t UpdateStmt;
 
@@ -150,7 +161,7 @@ void free_update_stmt(UpdateStmt *stmt);
 
 struct DeleteStmt_t {
     char *tableName;
-    AssignmentList *where;
+    ComparisonGroup *where;
 };
 typedef struct DeleteStmt_t DeleteStmt;
 
@@ -194,7 +205,7 @@ struct Statement_t {
 };
 typedef struct Statement_t Statement;
 
-Statement *new_statement();
+Statement *new_statement(StatementType type, void *statement);
 
 void free_statement(Statement *stmt);
 
@@ -209,5 +220,17 @@ StatementList *new_statement_list();
 void free_statement_list(StatementList *list);
 
 void append_statement_list(StatementList *list, Statement *statement);
+
+void print_statement_list(StatementList *list);
+
+void print_field_list(FieldList *list);
+
+void print_assignment_list(AssignmentList *list);
+
+void print_comparison_group(ComparisonGroup *group);
+
+void print_column_spec_list(ColumnSpecList *list);
+
+void print_value(Value *value);
 
 #endif //SDB_SQL_H

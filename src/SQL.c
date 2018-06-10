@@ -3,10 +3,13 @@
 //
 
 #include <malloc.h>
+#include <stdio.h>
+#include <string.h>
 #include "SQL.h"
 
 Value *new_value() {
     Value *value = malloc(sizeof(Value));
+    value->type = VALUE_NONE;
     value->number = 0;
     value->string = NULL;
     return value;
@@ -177,7 +180,7 @@ SelectStmt *new_select_stmt() {
 
 void free_select_stmt(SelectStmt *stmt) {
     if (stmt->where != NULL) {
-        free_assignment_list(stmt->where);
+        free_comparison_group(stmt->where);
     }
     if (stmt->tableName != NULL) {
         free(stmt->tableName);
@@ -218,7 +221,7 @@ void free_update_stmt(UpdateStmt *stmt) {
         free(stmt->tableName);
     }
     if (stmt->where != NULL) {
-        free_assignment_list(stmt->where);
+        free_comparison_group(stmt->where);
     }
     if (stmt->values != NULL) {
         free_assignment_list(stmt->values);
@@ -237,7 +240,7 @@ void free_delete_stmt(DeleteStmt *stmt) {
         free(stmt->tableName);
     }
     if (stmt->where != NULL) {
-        free_assignment_list(stmt->where);
+        free_comparison_group(stmt->where);
     }
     free(stmt);
 }
@@ -272,10 +275,10 @@ void free_drop_stmt(DropStmt *stmt) {
     free(stmt);
 }
 
-Statement *new_statement() {
+Statement *new_statement(StatementType type, void *statement) {
     Statement *stmt = malloc(sizeof(Statement));
-    stmt->type = STMT_NONE;
-    stmt->stmt = NULL;
+    stmt->type = type;
+    stmt->stmt = statement;
     return stmt;
 }
 
@@ -330,4 +333,143 @@ void append_statement_list(StatementList *list, Statement *statement) {
     list->length++;
     list->statements = realloc(list->statements, sizeof(Statement *) * list->length);
     list->statements[list->length - 1] = statement;
+}
+
+void print_statement_list(StatementList *list) {
+
+    for (size_t i = 0; i < list->length; i++) {
+        Statement *stmt = list->statements[i];
+        switch (stmt->type) {
+            case STMT_SELECT: {
+                SelectStmt *select = stmt->stmt;
+                printf("SELECT ");
+                print_field_list(select->fields);
+                printf(" FROM %s", select->tableName);
+                if (select->where->length > 0) {
+                    printf(" WHERE ");
+                    print_comparison_group(select->where);
+                }
+            }
+                break;
+            case STMT_INSERT: {
+                InsertStmt *insert = stmt->stmt;
+                printf("INSERT INTO %s SET ", insert->tableName);
+                print_assignment_list(insert->values);
+            }
+                break;
+            case STMT_UPDATE: {
+                UpdateStmt *update = stmt->stmt;
+                printf("UPDATE %s SET ", update->tableName);
+                print_assignment_list(update->values);
+                if (update->where->length > 0) {
+                    printf(" WHERE ");
+                    print_comparison_group(update->where);
+                }
+            }
+                break;
+            case STMT_DELETE: {
+                DeleteStmt *delete = stmt->stmt;
+                printf("DELETE FROM %s", delete->tableName);
+                if (delete->where->length > 0) {
+                    printf(" ");
+                    print_comparison_group(delete->where);
+                }
+            }
+                break;
+            case STMT_CREATE: {
+                CreateStmt *create = stmt->stmt;
+                printf("CREATE TABLE %s (", create->tableName);
+                print_column_spec_list(create->columns);
+                printf(")");
+            }
+                break;
+            case STMT_DROP: {
+                DropStmt *drop = stmt->stmt;
+                printf("DELETE TABLE %s", drop->tableName);
+            }
+                break;
+            default:
+                break;
+        }
+        printf(";\n");
+    }
+
+}
+
+void print_field_list(FieldList *list) {
+    for (size_t i = 0; i < list->length; i++) {
+        printf("%s%s", list->fields[i], i + 1 < list->length ? ", " : "");
+    }
+}
+
+void print_assignment_list(AssignmentList *list) {
+    for (size_t i = 0; i < list->length; i++) {
+        Assignment *assignment = list->assignments[i];
+        printf("%s=", assignment->identifier);
+        print_value(assignment->value);
+        if (i + 1 < list->length) {
+            printf(", ");
+        }
+    }
+}
+
+void print_comparison_group(ComparisonGroup *group) {
+    for (size_t i = 0; i < group->length; i++) {
+        Comparison *comparison = group->comparisons[i];
+        printf("%s=", comparison->identifier);
+        print_value(comparison->value);
+        if (i + 1 < group->length) {
+            printf(" AND ");
+        }
+    }
+}
+
+void print_column_spec_list(ColumnSpecList *list) {
+    for (size_t i = 0; i < list->length; i++) {
+        ColumnSpec *spec = list->columns[i];
+        if (spec->type == COLTYPE_STRING) {
+            printf("%s STRING(%d)", spec->identifier, spec->size);
+        } else if (spec->type == COLTYPE_INT) {
+            printf("%s INTEGER", spec->identifier);
+        }
+        if (spec->option == COLOPT_INDEX) {
+            printf(" INDEX");
+        }
+        if (i + 1 < list->length) {
+            printf(", ");
+        }
+    }
+}
+
+void print_value(Value *value) {
+    if (value->type == VALUE_STRING) {
+        printf("'");
+        size_t len = strlen(value->string);
+        for (size_t i = 0; i < len; i++) {
+            char next = value->string[i];
+            switch (next) {
+                case '\'':
+                    printf("\\'");
+                    break;
+                case '\n':
+                    printf("\\n");
+                    break;
+                case '\r':
+                    printf("\\r");
+                    break;
+                case '\t':
+                    printf("\\t");
+                    break;
+                case '\\':
+                    printf("\\\\");
+                    break;
+                default:
+                    printf("%c", next);
+                    break;
+            }
+        }
+        printf("'");
+    } else if (value->type == VALUE_NUMBER) {
+        printf("%lld", value->number);
+    }
 }

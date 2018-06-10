@@ -55,7 +55,7 @@ enum ParserNodeType_t {
 typedef enum ParserNodeType_t ParserNodeType;
 #undef X
 
-char* parser_node_type_to_str(ParserNodeType nodeType);
+char *parser_node_type_to_str(ParserNodeType nodeType);
 
 struct ParserNode_t {
     struct ParserNode_t *parent;
@@ -72,6 +72,16 @@ ParserNode *new_parser_node(ParserNodeType type, ScannerToken *token);
 void free_parser_node(ParserNode *node);
 
 void append_parser_node(ParserNode *node, ParserNode *child);
+
+StatementList *parser_node_convert(ParserNode *node);
+
+ColumnSpecList *parser_node_convert_column_spec_list(ParserNode *node);
+
+ComparisonGroup *parser_node_convert_comparison_group(ParserNode *node);
+
+AssignmentList *parser_node_convert_assignment_list(ParserNode *node);
+
+Value *parser_node_convert_value(ParserNode *node);
 
 struct Parser_t {
     ParseStatus status;

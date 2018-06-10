@@ -48,7 +48,7 @@ char* scanner_token_type_to_str(ScannerTokenType tokenType);
 struct ScannerToken_t {
     ScannerTokenType type;
     char *valueStr;
-    uint64_t valueInt;
+    int64_t valueInt;
     size_t lineNo;
     size_t linePos;
 };

@@ -76,6 +76,149 @@ void free_parser(Parser *parser) {
     free(parser);
 }
 
+StatementList *parser_node_convert(ParserNode *node) {
+    if (node->type != NODE_STATEMENT_LIST) {
+        return NULL;
+    }
+
+    StatementList *list = new_statement_list();
+
+    size_t i, k;
+
+    for (i = 0; i < node->childrenLength; i++) {
+        ParserNode *child = node->children[i];
+        switch (child->type) {
+            case NODE_SELECT_STMT: {
+                SelectStmt *select = new_select_stmt();
+                append_statement_list(list, new_statement(STMT_SELECT, select));
+                select->fields = new_field_list();
+                select->tableName = strdup(child->children[1]->token->valueStr);
+                for (k = 0; k < child->children[0]->childrenLength; k++) {
+                    ParserNode *fieldNode = child->children[0]->children[k];
+                    append_field_list(select->fields, strdup(fieldNode->token->valueStr));
+                }
+                if (child->childrenLength == 3) {
+                    select->where = parser_node_convert_comparison_group(child->children[2]);
+                } else {
+                    select->where = new_comparision_group();
+                }
+            }
+                break;
+            case NODE_INSERT_STMT: {
+                InsertStmt *insert = new_insert_stmt();
+                append_statement_list(list, new_statement(STMT_INSERT, insert));
+                insert->tableName = strdup(child->children[0]->token->valueStr);
+                insert->values = parser_node_convert_assignment_list(child->children[1]);
+            }
+                break;
+            case NODE_UPDATE_STMT: {
+                UpdateStmt *update = new_update_stmt();
+                append_statement_list(list, new_statement(STMT_UPDATE, update));
+                update->tableName = strdup(child->children[0]->token->valueStr);
+                update->values = parser_node_convert_assignment_list(child->children[1]);
+                if (child->childrenLength == 3) {
+                    update->where = parser_node_convert_comparison_group(child->children[2]);
+                } else {
+                    update->where = new_comparision_group();
+                }
+            }
+                break;
+            case NODE_DELETE_STMT: {
+                DeleteStmt *delete = new_delete_stmt();
+                append_statement_list(list, new_statement(STMT_DELETE, delete));
+                delete->tableName = strdup(child->children[0]->token->valueStr);
+                if (child->childrenLength == 2) {
+                    delete->where = parser_node_convert_comparison_group(child->children[1]);
+                } else {
+                    delete->where = new_comparision_group();
+                }
+            }
+                break;
+            case NODE_CREATE_STMT: {
+                CreateStmt *create = new_create_stmt();
+                append_statement_list(list, new_statement(STMT_CREATE, create));
+                create->tableName = strdup(child->children[0]->token->valueStr);
+                create->columns = parser_node_convert_column_spec_list(child->children[1]);
+            }
+                break;
+            case NODE_DROP_STMT: {
+                DropStmt *drop= new_drop_stmt();
+                append_statement_list(list, new_statement(STMT_DROP, drop));
+                drop->tableName = (child->children[0]->token->valueStr);
+            }
+                break;
+            default:
+                break;
+        }
+    }
+
+    return list;
+}
+
+ColumnSpecList *parser_node_convert_column_spec_list(ParserNode *node) {
+    ColumnSpecList *list = new_column_spec_list();
+    for (size_t i = 0; i < node->childrenLength; i++) {
+        ParserNode* specNode = node->children[i];
+        ColumnSpec *spec = new_column_spec();
+        append_column_spec_list(list, spec);
+        spec->identifier = strdup(specNode->token->valueStr);
+        ParserNode *colTypeNode = specNode->children[0];
+        if (colTypeNode->token->type == T_KW_STRING) {
+            spec->type = COLTYPE_STRING;
+            spec->size = (size_t)colTypeNode->children[0]->token->valueInt;
+        } else if (colTypeNode->token->type == T_KW_INT) {
+            spec->type = COLTYPE_INT;
+        }
+        if (specNode->childrenLength == 2) {
+            if (specNode->children[1]->token->type == T_KW_INDEX) {
+                spec->option = COLOPT_INDEX;
+            }
+        }
+    }
+    return list;
+}
+
+ComparisonGroup *parser_node_convert_comparison_group(ParserNode *node) {
+    ComparisonGroup *group = new_comparision_group();
+    for (size_t i = 0; i < node->childrenLength; i++) {
+        ParserNode *compNode = node->children[i];
+        Comparison *comp = new_comparison();
+        append_comparison_group(group, comp);
+        comp->identifier = strdup(compNode->children[0]->token->valueStr);
+        if (compNode->children[1]->token->type == T_COMP_EQ) {
+            comp->comp = COMP_EQ;
+        } else if (compNode->children[1]->token->type == T_COMP_NEQ) {
+            comp->comp = COMP_NEQ;
+        }
+        comp->value = parser_node_convert_value(compNode->children[2]);
+    }
+    return group;
+}
+
+AssignmentList *parser_node_convert_assignment_list(ParserNode *node) {
+    AssignmentList *list = new_assignment_list();
+    for (size_t i = 0; i < node->childrenLength; i++) {
+        ParserNode *assignmentNode = node->children[i];
+        Assignment *assignment = new_assignment();
+        append_assignment_list(list, assignment);
+        assignment->identifier = strdup(assignmentNode->token->valueStr);
+        assignment->value = parser_node_convert_value(assignmentNode->children[0]);
+    }
+    return list;
+}
+
+Value *parser_node_convert_value(ParserNode *node) {
+    Value *value = new_value();
+    if (node->token->type == T_STRING) {
+        value->type = VALUE_STRING;
+        value->string = strdup(node->token->valueStr);
+    } else if (node->token->type == T_NUMBER) {
+        value->type = VALUE_NUMBER;
+        value->number = node->token->valueInt;
+    }
+    return value;
+}
+
 #define NEXT_TOKEN() {\
         token = scanner_next_token(scanner, token);\
     }
@@ -286,9 +429,9 @@ ParserNode *parser_parse(Parser *parser, Scanner *scanner) {
                             ASCEND_NODE();
                         } else if (token->type == T_KW_WHERE) {
                             node->phase++;
-                            ParserNode *assignments = new_parser_node(NODE_ASSIGNMENT_LIST, NULL);
-                            append_parser_node(node, assignments);
-                            node = assignments;
+                            ParserNode *comparisons = new_parser_node(NODE_COMPARISON_GROUP, NULL);
+                            append_parser_node(node, comparisons);
+                            node = comparisons;
                         }
                     }
                         break;
@@ -405,6 +548,10 @@ ParserNode *parser_parse(Parser *parser, Scanner *scanner) {
                         NEXT_TOKEN();
                         if (token == NULL || token->type != T_NUMBER) {
                             parser_set_error(parser, "Expected number", token);
+                            break;
+                        }
+                        if (token->valueInt < 1) {
+                            parser_set_error(parser, "Expected positive number", token);
                             break;
                         }
                         append_parser_node(columnType, new_parser_node(NODE_COLUMN_TYPE_SPECIFIER, token));

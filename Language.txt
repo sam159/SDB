@@ -10,8 +10,8 @@ Statement = SelectStmt | InsertStmt | UpdateStmt | DeleteStmt | CreateStmt | Dro
 
 SelectStmt = 'Select', FieldList, 'From', Identifier, ['Where', ComparisonGroup] ;
 InsertStmt = 'Insert Into', Identifier, 'Set', AssignmentList ;
-UpdateStmt = 'Update', Identifier, 'Set', AssignmentList, 'Where', AssignmentList ;
-DeleteStmt = 'Delete From', Identifier, 'Where', AssignmentList ;
+UpdateStmt = 'Update', Identifier, 'Set', AssignmentList, 'Where', ComparisonGroup ;
+DeleteStmt = 'Delete From', Identifier, 'Where', ComparisonGroup ;
 CreateStmt = 'Create Table', Identifier, '(', ColumnSpecList, ')' ;
 DropStmt = 'Drop Table', Identifier ;
 

@@ -203,11 +203,11 @@ ScannerToken *scanner_next_token(Scanner *scanner, ScannerToken *token) {
     }
 
     //Numbers
-    if (isdigit(scanner_peek_char(scanner))) {
+    if (isdigit(scanner_peek_char(scanner)) || scanner_peek_char(scanner) == '-') {
         char intInput[32] = {0};
         size_t intIndex = 0;
         while (scanner_peek_char(scanner) != 0
-               && isdigit(scanner_peek_char(scanner))
+               && (isdigit(scanner_peek_char(scanner)) || scanner_peek_char(scanner) == '-')
                && intIndex + 1 < 32) {
             intInput[intIndex++] = scanner_next_char(scanner);
         }
@@ -219,7 +219,7 @@ ScannerToken *scanner_next_token(Scanner *scanner, ScannerToken *token) {
         }
         token->type = T_NUMBER;
         //convert number
-        token->valueInt = (uint64_t) strtol(intInput, NULL, 10);
+        token->valueInt = (int64_t) strtol(intInput, NULL, 10);
         return token;
     }
 
