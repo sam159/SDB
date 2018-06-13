@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "scanner.h"
-#include "sql.h"
+#include "SQL.h"
 
 #define PARSE_STATUS_LIST \
     X(PARSESTATE_NONE) \

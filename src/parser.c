@@ -32,7 +32,7 @@ char *parser_node_type_to_str(ParserNodeType nodeType) {
 }
 
 ParserNode *new_parser_node(ParserNodeType type, ScannerToken *token) {
-    ParserNode *node = malloc(sizeof(ScannerToken));
+    ParserNode *node = malloc(sizeof(ParserNode));
     node->parent = NULL;
     node->type = type;
     node->phase = 0;
@@ -144,7 +144,7 @@ StatementList *parser_node_convert(ParserNode *node) {
             case NODE_DROP_STMT: {
                 DropStmt *drop= new_drop_stmt();
                 append_statement_list(list, new_statement(STMT_DROP, drop));
-                drop->tableName = (child->children[0]->token->valueStr);
+                drop->tableName = strdup(child->children[0]->token->valueStr);
             }
                 break;
             default:
@@ -717,7 +717,7 @@ void parser_set_error(Parser *parser, char *err, ScannerToken *token) {
     parser->status = PARSESTATE_ERROR;
     if (token != NULL) {
         char *errMsg = calloc(128, sizeof(char));
-        snprintf(errMsg, 128, "[%d:%d] %s", token->lineNo, token->linePos, err);
+        snprintf(errMsg, 128, "[%ld:%ld] %s", token->lineNo, token->linePos, err);
         parser->errMsg = strdup(errMsg);
         free(errMsg);
     } else {
@@ -743,7 +743,7 @@ void parser_print_node_tree(ParserNode *node, size_t indent) {
                 printf("<%s>", node->token->valueStr);
                 break;
             case T_NUMBER:
-                printf("<%lld>", node->token->valueInt);
+                printf("<%ld>", node->token->valueInt);
                 break;
             default:
                 break;

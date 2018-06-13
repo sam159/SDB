@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "scanner.h"
 
 char* scanner_token_type_to_str(ScannerTokenType tokenType) {
@@ -21,7 +22,11 @@ char* scanner_token_type_to_str(ScannerTokenType tokenType) {
 
 ScannerToken *new_scanner_token() {
     ScannerToken *result = malloc(sizeof(ScannerToken));
-    clear_scanner_token(result);
+    result->type = T_NONE;
+    result->valueInt = 0;
+    result->valueStr = NULL;
+    result->lineNo = 0;
+    result->linePos = 0;
     return result;
 }
 
@@ -38,7 +43,7 @@ void clear_scanner_token(ScannerToken *result) {
 
 void free_scanner_token(ScannerToken *result) {
     if (result->valueStr != NULL) {
-        free(result);
+        free(result->valueStr);
     }
     free(result);
 }
@@ -368,7 +373,7 @@ void scanner_set_error(Scanner *scanner, const char *errText) {
     //Create error msg
     char *errMsg = malloc(sizeof(char) * 128);
 
-    snprintf(errMsg, 128, "[%d:%d]: %s", scanner->lineNo, scanner->linePos, errText);
+    snprintf(errMsg, 128, "[%ld:%ld]: %s", scanner->lineNo, scanner->linePos, errText);
 
     if (scanner->errMsg != NULL) {
         free(scanner->errMsg);

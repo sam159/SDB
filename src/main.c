@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include <mem.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
 
 #include "InputBuffer.h"
 #include "scanner.h"
@@ -62,7 +64,7 @@ int main() {
         prompt();
         read_input(buffer);
 
-        if (strcmpi(buffer->buffer, ".exit") == 0) {
+        if (strcasecmp(buffer->buffer, ".exit") == 0) {
             break;
         } else {
             parse_input(buffer->buffer);
