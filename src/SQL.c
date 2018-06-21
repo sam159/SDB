@@ -428,7 +428,7 @@ void print_column_spec_list(ColumnSpecList *list) {
     for (size_t i = 0; i < list->length; i++) {
         ColumnSpec *spec = list->columns[i];
         if (spec->type == COLTYPE_STRING) {
-            printf("%s STRING(%d)", spec->identifier, spec->size);
+            printf("%s STRING(%ld)", spec->identifier, spec->size);
         } else if (spec->type == COLTYPE_INT) {
             printf("%s INTEGER", spec->identifier);
         }
@@ -470,6 +470,6 @@ void print_value(Value *value) {
         }
         printf("'");
     } else if (value->type == VALUE_NUMBER) {
-        printf("%lld", value->number);
+        printf("%ld", value->number);
     }
 }
