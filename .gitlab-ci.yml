@@ -3,7 +3,6 @@ image: alpine:latest
 before_script:
   - apk -q update
   - apk -q add build-base cmake check-dev git
-  - cmake .
 
 stages:
   - build
@@ -11,9 +10,13 @@ stages:
 
 job_build:
   stage: build
+  environment:
+    CC: /usr/bin/x86_64-alpine-linux-musl-gcc
   script:
+    - cmake -DCMAKE_EXE_LINKER_FLAGS="-static -Os" .
     - make SDB
   artifacts:
+    name: SDB Linux
     expire_in: 1 week
     paths:
       - src/SDB
@@ -21,5 +24,6 @@ job_build:
 job_test:
   stage: test
   script:
+    - cmake .
     - make check_SDB
     - ./tests/check_SDB
