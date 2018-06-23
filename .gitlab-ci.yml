@@ -10,9 +10,8 @@ stages:
 
 job_build:
   stage: build
-  environment:
-    CC: /usr/bin/x86_64-alpine-linux-musl-gcc
   script:
+    - export CC=/usr/bin/x86_64-alpine-linux-musl-gcc
     - cmake -DCMAKE_EXE_LINKER_FLAGS="-static -Os" .
     - make SDB
   artifacts:
