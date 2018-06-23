@@ -1,0 +1,20 @@
+image: alpine:latest
+
+before_script:
+  - apk -q update
+  - apk -q add build-base cmake check-dev git
+
+stages:
+  - build
+  - test
+
+job_build:
+  stage: build
+  script:
+    - cmake .
+    - make
+
+job_test:
+  stage: test
+  script:
+    - check_SDB

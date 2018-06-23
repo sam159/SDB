@@ -5,6 +5,7 @@
 #include <malloc.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 #include "bplus_tree.h"
 
 #define APPEND_STR(str, size, _) { \
