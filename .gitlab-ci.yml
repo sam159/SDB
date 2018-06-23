@@ -3,6 +3,7 @@ image: alpine:latest
 before_script:
   - apk -q update
   - apk -q add build-base cmake check-dev git
+  - cmake .
 
 stages:
   - build
@@ -11,10 +12,14 @@ stages:
 job_build:
   stage: build
   script:
-    - cmake .
-    - make
+    - make SDB
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - src/SDB
 
 job_test:
   stage: test
   script:
-    - check_SDB
+    - make check_SDB
+    - ./tests/check_SDB
