@@ -43,6 +43,8 @@ bool bplus_node_insert_kv(BPlusNode *node, BPlusKV *kv);
 
 void print_bplus_node(BPlusNode *node, size_t indent);
 
+char * debug_bplus_node_str(BPlusNode *node, char *str, size_t *strSize);
+
 struct BPlusTree_t {
     size_t order;
     size_t minFill;
@@ -56,10 +58,21 @@ BPlusTree *new_bplus_tree(size_t order);
 void free_bplus_tree(BPlusTree *tree);
 
 void print_bplus_tree(BPlusTree *tree);
+char *debug_bplus_tree_str(BPlusTree *tree, char *str);
 
 BPlusNode * bplus_tree_find_leaf(BPlusTree *tree, uint64_t key);
 
 bool bplus_tree_insert(BPlusTree *tree, uint64_t key, void *value);
 
+BPlusKV * bplus_tree_find(BPlusTree *tree, uint64_t key);
+
+enum BPlusFindComp_t {
+    FIND_NONE = 0,
+    FIND_LT = 1,
+    FIND_EQ = 2,
+    FIND_GT = 4
+};
+typedef enum BPlusFindComp_t BPlusFindComp;
+BPlusKV * bplus_tree_find_closest(BPlusTree *tree, uint64_t key, BPlusFindComp dir);
 
 #endif //SDB_BPLUS_TREE_H

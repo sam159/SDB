@@ -7,6 +7,14 @@
 #include <assert.h>
 #include "bplus_tree.h"
 
+#define APPEND_STR(str, size, _) { \
+    if (strlen(_) + strlen(str) + 1 > (size)) { \
+        (size) *= 2; \
+        (str) = realloc(str, (size) * sizeof(char)); \
+    } \
+    strcat(str, _);\
+}
+
 BPlusKV *new_bplus_kv(uint64_t key, void *value, BPlusNode *leftPointer) {
     BPlusKV *kv = malloc(sizeof(BPlusKV));
     kv->key = key;
@@ -93,6 +101,9 @@ void print_bplus_node(BPlusNode *node, size_t indent) {
     } else {
         printf("%sLEAF #%ld (%ld/%ld)\n", indentStr, node->id, node->keyCount, node->order);
     }
+    if (node->parent != NULL) {
+        printf("%s  Parent #%ld\n", indentStr, node->parent->id);
+    }
 
     if (node->leftPointer != NULL) {
         print_bplus_node(node->leftPointer, indent + 4);
@@ -113,6 +124,24 @@ void print_bplus_node(BPlusNode *node, size_t indent) {
     }
 
     free(indentStr);
+}
+
+char *debug_bplus_node_str(BPlusNode *node, char *str, size_t *strSize) {
+    APPEND_STR(str, *strSize, "[");
+    if (node->leftPointer != NULL) {
+        str = debug_bplus_node_str(node->leftPointer, str, strSize);
+    }
+    char buffer[32] = {0};
+    for (size_t i = 0; i < node->keyCount; i++) {
+        snprintf(buffer, 32, node->isInternal ? "{%ld}" : "{%ld*}", node->keys[i]->key);
+        APPEND_STR(str, *strSize, buffer);
+        if (node->keys[i]->rightPointer != NULL) {
+            str = debug_bplus_node_str(node->keys[i]->rightPointer, str, strSize);
+        }
+    }
+
+    APPEND_STR(str, *strSize, "]");
+    return str;
 }
 
 BPlusTree *new_bplus_tree(size_t order) {
@@ -141,6 +170,18 @@ void print_bplus_tree(BPlusTree *tree) {
     } else {
         printf("  EMPTY TREE\n");
     }
+}
+
+char *debug_bplus_tree_str(BPlusTree *tree, char *str) {
+    size_t strSize = 32;
+    str = realloc(str, strSize * sizeof(char));
+    memset(str, 0, strSize * sizeof(char));
+
+    snprintf(str, 32, "B+<%ld>", tree->order);
+
+    str = debug_bplus_node_str(tree->root, str, &strSize);
+
+    return str;
 }
 
 BPlusNode *bplus_tree_find_leaf(BPlusTree *tree, uint64_t key) {
@@ -232,6 +273,7 @@ bool bplus_tree_insert(BPlusTree *tree, uint64_t newKey, void *newValue) {
                     //Move midpoint up and move keys > midpoint to new node
                     k = 0;
                     for (size_t i = midpointIndex + 1; i < node->order; i++) {
+                        node->keys[i]->rightPointer->parent = newNode;
                         newNode->keys[k++] = node->keys[i];
                         node->keys[i] = NULL;
                         newNode->keyCount++;
@@ -241,6 +283,7 @@ bool bplus_tree_insert(BPlusTree *tree, uint64_t newKey, void *newValue) {
                     node->keys[midpointIndex] = NULL;
                     node->keyCount--;
                     newNode->leftPointer = ascendingKV->rightPointer;
+                    newNode->leftPointer->parent = newNode;
                     ascendingKV->rightPointer = newNode;
                 }
             }
@@ -248,4 +291,71 @@ bool bplus_tree_insert(BPlusTree *tree, uint64_t newKey, void *newValue) {
 
     }
 
+}
+
+BPlusKV *bplus_tree_find(BPlusTree *tree, uint64_t key) {
+    BPlusNode *leaf = bplus_tree_find_leaf(tree, key);
+    if (leaf == NULL) {
+        return NULL;
+    }
+    for (size_t i = 0; i < leaf->keyCount; i++) {
+        if (leaf->keys[i]->key == key) {
+            return leaf->keys[i];
+        }
+    }
+}
+
+BPlusKV *bplus_tree_find_closest(BPlusTree *tree, uint64_t key, BPlusFindComp dir) {
+    //Do regular find if we are only looking for key
+    if (dir == FIND_EQ) {
+        return bplus_tree_find(tree, key);
+    }
+    BPlusNode *leaf = bplus_tree_find_leaf(tree, key);
+    if (leaf == NULL) {
+        return NULL;
+    }
+    //Scan right until we find a value >= key
+    ssize_t i;
+    do {
+        bool done = false;
+        for (i = 0; i < leaf->keyCount; i++) {
+            if (leaf->keys[i]->key == key && (dir & FIND_EQ) == FIND_EQ) {
+                //Return the value if we are looking for value = key
+                done = true;
+                break;
+            } else if (leaf->keys[i]->key > key) {
+                //Return the value if we are looking for value > key
+                if ((dir & FIND_GT) == FIND_GT) {
+                    return leaf->keys[i];
+                } else {
+                    done = true;
+                    break;
+                }
+            }
+        }
+        if (done) {
+            break;
+        }
+        if (leaf->rightLeaf == NULL) {
+            break;
+        }
+        leaf = leaf->rightLeaf;
+    } while (leaf != NULL);
+
+    //Didn't find an acceptable value >= key and we are not looking for value < key
+    if ((dir & FIND_LT) == 0) {
+        return NULL;
+    }
+
+    //Scan left until we find a value < key
+    do {
+        for (i = leaf->keyCount - 1; i >= 0; i--) {
+            if (leaf->keys[i]->key < key) {
+                return leaf->keys[i];
+            }
+        }
+        leaf = leaf->leftLeaf;
+    } while (leaf != NULL);
+
+    return NULL;
 }
