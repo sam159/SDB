@@ -91,6 +91,28 @@ bool bplus_node_insert_kv(BPlusNode *node, BPlusKV *kv) {
     return true;
 }
 
+bool bplus_node_remove_kv(BPlusNode *node, BPlusKV *kv) {
+    bool removed = false;
+    //Find key
+    for (size_t i = 0; i < node->keyCount; i++) {
+        if (node->keys[i] == kv) {
+            node->keys[i] = NULL;
+            node->keyCount--;
+            //Move keys down
+            for (; i < node->keyCount; i++) {
+                node->keys[i] = node->keys[i + 1];
+            }
+            removed = true;
+            break;
+        }
+    }
+    return removed;
+}
+
+bool bplus_node_merge(BPlusNode *left, BPlusNode *right) {
+
+}
+
 void print_bplus_node(BPlusNode *node, size_t indent) {
     char *indentStr = calloc(indent + 1, sizeof(char));
     memset(indentStr, ' ', sizeof(char) * indent);
@@ -213,7 +235,7 @@ BPlusNode *bplus_tree_find_leaf(BPlusTree *tree, uint64_t key) {
 
 bool bplus_tree_insert(BPlusTree *tree, uint64_t newKey, void *newValue) {
     BPlusNode *node = bplus_tree_find_leaf(tree, newKey);
-    assert(node != NULL);
+    assert(node != NULL && node->isInternal == false);
 
     if (node->keyCount < node->order - 1) {
         //Can insert at this node
@@ -290,6 +312,86 @@ bool bplus_tree_insert(BPlusTree *tree, uint64_t newKey, void *newValue) {
             }
         } while (node != NULL);
 
+    }
+
+}
+
+bool bplus_tree_delete(BPlusTree *tree, uint64_t key) {
+    BPlusNode *node = bplus_tree_find_leaf(tree, key);
+    assert(node != NULL && node->isInternal == false);
+
+    //Find and remove kv
+    bool removed = false;
+    for (size_t i = 0; i < node->keyCount; i++) {
+        if (node->keys[i]->key == key) {
+            BPlusKV *kv = node->keys[i];
+            removed = bplus_node_remove_kv(node, node->keys[i]);
+            assert(removed);
+            free_bplus_kv(kv);
+            break;
+        }
+    }
+
+    if (!removed) {
+        return false;
+    }
+
+    if (node->keyCount >= tree->minFill || node->parent == NULL) {
+        return true;
+    }
+
+    //Try and borrow a key from a neighbour
+
+    //Check right leaf
+    if (node->rightLeaf != NULL
+        && node->rightLeaf->parent == node->parent
+        && node->rightLeaf->keyCount > tree->minFill) {
+        //Move first kv on leaf to this node
+        BPlusKV *kv = node->rightLeaf->keys[0];
+        assert(bplus_node_remove_kv(node->rightLeaf, kv));
+        assert(bplus_node_insert_kv(node, kv));
+        //Update the right leafs parent pointer
+        for (size_t i = 0; i < node->parent->keyCount; i++) {
+            if (node->parent->keys[i]->rightPointer == node->rightLeaf) {
+                node->parent->keys[i]->key = node->rightLeaf->keys[0]->key;
+                break;
+            }
+        }
+        return true;
+    }
+
+    //Check left leaf
+    if (node->leftLeaf != NULL
+        && node->leftLeaf->parent == node->parent
+        && node->leftLeaf->keyCount > tree->minFill) {
+        //Borrow right most key from left leaf
+        BPlusKV *kv = node->leftLeaf->keys[node->keyCount - 1];
+        assert(bplus_node_remove_kv(node->leftLeaf, kv));
+        assert(bplus_node_insert_kv(node, kv));
+        //Update the key pointing to this node
+        for (size_t i = 0; i < node->parent->keyCount; i++) {
+            if (node->parent->keys[i]->rightPointer == node) {
+                node->parent->keys[i]->key = node->keys[0]->key;
+                break;
+            }
+        }
+    }
+
+    //No key to borrow, merge with a sibling
+    //Look right and left for leafs with same parent and where merging would result in keys < order
+
+    //Try right leaf
+    if (node->rightLeaf != NULL
+        && node->parent == node->rightLeaf->parent
+        && node->keyCount + node->rightLeaf->keyCount < tree->order) {
+        return bplus_node_merge(node, node->rightLeaf);
+    }
+
+    //Try left leaf
+    if (node->leftLeaf != NULL
+        && node->parent == node->leftLeaf->parent
+        && node->keyCount + node->leftLeaf->keyCount < tree->order) {
+        return bplus_node_merge(node->leftLeaf, node);
     }
 
 }
