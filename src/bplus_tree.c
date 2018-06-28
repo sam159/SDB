@@ -16,11 +16,11 @@
     strcat(str, _);\
 }
 
-BPlusKV *new_bplus_kv(uint64_t key, void *value, BPlusNode *leftPointer) {
+BPlusKV *new_bplus_kv(uint64_t key, void *value, BPlusNode *rightPointer) {
     BPlusKV *kv = malloc(sizeof(BPlusKV));
     kv->key = key;
     kv->value = value;
-    kv->rightPointer = leftPointer;
+    kv->rightPointer = rightPointer;
     return kv;
 }
 
@@ -107,10 +107,6 @@ bool bplus_node_remove_kv(BPlusNode *node, BPlusKV *kv) {
         }
     }
     return removed;
-}
-
-bool bplus_node_merge(BPlusNode *left, BPlusNode *right) {
-
 }
 
 void print_bplus_node(BPlusNode *node, size_t indent) {
@@ -364,7 +360,7 @@ bool bplus_tree_delete(BPlusTree *tree, uint64_t key) {
     if (node->leftLeaf != NULL
         && node->leftLeaf->parent == node->parent
         && node->leftLeaf->keyCount > tree->minFill) {
-        //Borrow right most key from left leaf
+        //Move right most key from left leaf
         BPlusKV *kv = node->leftLeaf->keys[node->keyCount - 1];
         assert(bplus_node_remove_kv(node->leftLeaf, kv));
         assert(bplus_node_insert_kv(node, kv));
@@ -380,20 +376,81 @@ bool bplus_tree_delete(BPlusTree *tree, uint64_t key) {
     //No key to borrow, merge with a sibling
     //Look right and left for leafs with same parent and where merging would result in keys < order
 
+    bool merged = false;
     //Try right leaf
     if (node->rightLeaf != NULL
         && node->parent == node->rightLeaf->parent
         && node->keyCount + node->rightLeaf->keyCount < tree->order) {
-        return bplus_node_merge(node, node->rightLeaf);
+        //Move all keys from right leaf to this node
+        while(node->rightLeaf->keyCount > 0) {
+            assert(bplus_node_insert_kv(node, node->rightLeaf->keys[0]));
+            assert(bplus_node_remove_kv(node->rightLeaf, node->rightLeaf->keys[0]));
+        }
+        //Remove right leaf and parent pointer
+        for(size_t i=0; i<node->parent->keyCount; i++) {
+            BPlusKV *kv = node->parent->keys[i];
+            if (kv->rightPointer == node->rightLeaf) {
+                //Remove key
+                bplus_node_remove_kv(node->parent, kv);
+                //Update leaf pointers
+                node->rightLeaf = node->rightLeaf;
+                if (node->rightLeaf != NULL) {
+                    node->rightLeaf->leftLeaf = node;
+                }
+                //Free key and node
+                free_bplus_kv(kv);
+                break;
+            }
+        }
+        merged = true;
     }
 
     //Try left leaf
     if (node->leftLeaf != NULL
         && node->parent == node->leftLeaf->parent
         && node->keyCount + node->leftLeaf->keyCount < tree->order) {
-        return bplus_node_merge(node->leftLeaf, node);
+        //Move all keys into left leaf
+        while(node->keyCount > 0) {
+            assert(bplus_node_insert_kv(node->leftLeaf, node->keys[0]));
+            assert(bplus_node_remove_kv(node, node->keys[0]));
+        }
+        //Remove this leaf and parent pointer (if any)
+        for(size_t i=0; i<node->parent->keyCount; i++) {
+            BPlusKV *kv = node->parent->keys[i];
+            if (kv->rightPointer == node) {
+                //Remove key
+                bplus_node_remove_kv(node->parent, kv);
+                //Update leaf pointers
+                node->leftLeaf->rightLeaf = node->rightLeaf;
+                if (node->leftLeaf->rightLeaf != NULL) {
+                    node->leftLeaf->rightLeaf->leftLeaf = node->leftLeaf;
+                }
+                node = node->leftLeaf;
+                //Free key and node
+                free_bplus_kv(kv);
+                break;
+            }
+        }
+        merged = true;
     }
 
+    //Must have merged left or right leaf by this point
+    assert(merged == true);
+
+    //Start merging parents where key count <= 1
+    BPlusNode *parent = node->parent;
+
+    while(parent != NULL) {
+
+        if (parent->keyCount > 1) {
+            break;
+        }
+
+        //Try and borrow a key from a sibling
+
+
+
+    }
 }
 
 BPlusKV *bplus_tree_find(BPlusTree *tree, uint64_t key) {

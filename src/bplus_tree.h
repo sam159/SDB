@@ -19,7 +19,7 @@ struct BPlusKV_t {
 };
 typedef struct BPlusKV_t BPlusKV;
 
-BPlusKV *new_bplus_kv(uint64_t key, void *value, BPlusNode *leftPointer);
+BPlusKV *new_bplus_kv(uint64_t key, void *value, BPlusNode *rightPointer);
 
 void free_bplus_kv(BPlusKV *kv);
 
@@ -42,8 +42,6 @@ void free_bplus_node(BPlusNode *node);
 bool bplus_node_insert_kv(BPlusNode *node, BPlusKV *kv);
 
 bool bplus_node_remove_kv(BPlusNode *node, BPlusKV *kv);
-
-bool bplus_node_merge(BPlusNode *left, BPlusNode *right);
 
 void print_bplus_node(BPlusNode *node, size_t indent);
 
