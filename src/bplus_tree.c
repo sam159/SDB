@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include "bplus_tree.h"
 
+#include "bplus_tree.helpers.c"
+
 #define APPEND_STR(str, size, _) { \
     if (strlen(_) + strlen(str) + 1 > (size)) { \
         (size) *= 2; \
@@ -313,15 +315,15 @@ bool bplus_tree_insert(BPlusTree *tree, uint64_t newKey, void *newValue) {
 }
 
 bool bplus_tree_delete(BPlusTree *tree, uint64_t key) {
-    BPlusNode *node = bplus_tree_find_leaf(tree, key);
-    assert(node != NULL && node->isInternal == false);
+    BPlusNode *leaf = bplus_tree_find_leaf(tree, key);
+    assert(leaf != NULL && leaf->isInternal == false);
 
     //Find and remove kv
     bool removed = false;
-    for (size_t i = 0; i < node->keyCount; i++) {
-        if (node->keys[i]->key == key) {
-            BPlusKV *kv = node->keys[i];
-            removed = bplus_node_remove_kv(node, node->keys[i]);
+    for (size_t i = 0; i < leaf->keyCount; i++) {
+        if (leaf->keys[i]->key == key) {
+            BPlusKV *kv = leaf->keys[i];
+            removed = bplus_node_remove_kv(leaf, leaf->keys[i]);
             assert(removed);
             free_bplus_kv(kv);
             break;
@@ -332,24 +334,24 @@ bool bplus_tree_delete(BPlusTree *tree, uint64_t key) {
         return false;
     }
 
-    if (node->keyCount >= tree->minFill || node->parent == NULL) {
+    if (leaf->keyCount >= tree->minFill || leaf->parent == NULL) {
         return true;
     }
 
     //Try and borrow a key from a neighbour
 
     //Check right leaf
-    if (node->rightLeaf != NULL
-        && node->rightLeaf->parent == node->parent
-        && node->rightLeaf->keyCount > tree->minFill) {
-        //Move first kv on leaf to this node
-        BPlusKV *kv = node->rightLeaf->keys[0];
-        assert(bplus_node_remove_kv(node->rightLeaf, kv));
-        assert(bplus_node_insert_kv(node, kv));
+    if (leaf->rightLeaf != NULL
+        && leaf->rightLeaf->parent == leaf->parent
+        && leaf->rightLeaf->keyCount > tree->minFill) {
+        //Move first kv on leaf to this leaf
+        BPlusKV *kv = leaf->rightLeaf->keys[0];
+        assert(bplus_node_remove_kv(leaf->rightLeaf, kv));
+        assert(bplus_node_insert_kv(leaf, kv));
         //Update the right leafs parent pointer
-        for (size_t i = 0; i < node->parent->keyCount; i++) {
-            if (node->parent->keys[i]->rightPointer == node->rightLeaf) {
-                node->parent->keys[i]->key = node->rightLeaf->keys[0]->key;
+        for (size_t i = 0; i < leaf->parent->keyCount; i++) {
+            if (leaf->parent->keys[i]->rightPointer == leaf->rightLeaf) {
+                leaf->parent->keys[i]->key = leaf->rightLeaf->keys[0]->key;
                 break;
             }
         }
@@ -357,17 +359,17 @@ bool bplus_tree_delete(BPlusTree *tree, uint64_t key) {
     }
 
     //Check left leaf
-    if (node->leftLeaf != NULL
-        && node->leftLeaf->parent == node->parent
-        && node->leftLeaf->keyCount > tree->minFill) {
+    if (leaf->leftLeaf != NULL
+        && leaf->leftLeaf->parent == leaf->parent
+        && leaf->leftLeaf->keyCount > tree->minFill) {
         //Move right most key from left leaf
-        BPlusKV *kv = node->leftLeaf->keys[node->keyCount - 1];
-        assert(bplus_node_remove_kv(node->leftLeaf, kv));
-        assert(bplus_node_insert_kv(node, kv));
-        //Update the key pointing to this node
-        for (size_t i = 0; i < node->parent->keyCount; i++) {
-            if (node->parent->keys[i]->rightPointer == node) {
-                node->parent->keys[i]->key = node->keys[0]->key;
+        BPlusKV *kv = leaf->leftLeaf->keys[leaf->keyCount - 1];
+        assert(bplus_node_remove_kv(leaf->leftLeaf, kv));
+        assert(bplus_node_insert_kv(leaf, kv));
+        //Update the key pointing to this leaf
+        for (size_t i = 0; i < leaf->parent->keyCount; i++) {
+            if (leaf->parent->keys[i]->rightPointer == leaf) {
+                leaf->parent->keys[i]->key = leaf->keys[0]->key;
                 break;
             }
         }
@@ -378,26 +380,26 @@ bool bplus_tree_delete(BPlusTree *tree, uint64_t key) {
 
     bool merged = false;
     //Try right leaf
-    if (node->rightLeaf != NULL
-        && node->parent == node->rightLeaf->parent
-        && node->keyCount + node->rightLeaf->keyCount < tree->order) {
-        //Move all keys from right leaf to this node
-        while(node->rightLeaf->keyCount > 0) {
-            assert(bplus_node_insert_kv(node, node->rightLeaf->keys[0]));
-            assert(bplus_node_remove_kv(node->rightLeaf, node->rightLeaf->keys[0]));
+    if (leaf->rightLeaf != NULL
+        && leaf->parent == leaf->rightLeaf->parent
+        && leaf->keyCount + leaf->rightLeaf->keyCount < tree->order) {
+        //Move all keys from right leaf to this leaf
+        while (leaf->rightLeaf->keyCount > 0) {
+            assert(bplus_node_insert_kv(leaf, leaf->rightLeaf->keys[0]));
+            assert(bplus_node_remove_kv(leaf->rightLeaf, leaf->rightLeaf->keys[0]));
         }
         //Remove right leaf and parent pointer
-        for(size_t i=0; i<node->parent->keyCount; i++) {
-            BPlusKV *kv = node->parent->keys[i];
-            if (kv->rightPointer == node->rightLeaf) {
+        for (size_t i = 0; i < leaf->parent->keyCount; i++) {
+            BPlusKV *kv = leaf->parent->keys[i];
+            if (kv->rightPointer == leaf->rightLeaf) {
                 //Remove key
-                bplus_node_remove_kv(node->parent, kv);
+                bplus_node_remove_kv(leaf->parent, kv);
                 //Update leaf pointers
-                node->rightLeaf = node->rightLeaf;
-                if (node->rightLeaf != NULL) {
-                    node->rightLeaf->leftLeaf = node;
+                leaf->rightLeaf = leaf->rightLeaf;
+                if (leaf->rightLeaf != NULL) {
+                    leaf->rightLeaf->leftLeaf = leaf;
                 }
-                //Free key and node
+                //Free key and leaf
                 free_bplus_kv(kv);
                 break;
             }
@@ -406,27 +408,27 @@ bool bplus_tree_delete(BPlusTree *tree, uint64_t key) {
     }
 
     //Try left leaf
-    if (node->leftLeaf != NULL
-        && node->parent == node->leftLeaf->parent
-        && node->keyCount + node->leftLeaf->keyCount < tree->order) {
+    if (leaf->leftLeaf != NULL
+        && leaf->parent == leaf->leftLeaf->parent
+        && leaf->keyCount + leaf->leftLeaf->keyCount < tree->order) {
         //Move all keys into left leaf
-        while(node->keyCount > 0) {
-            assert(bplus_node_insert_kv(node->leftLeaf, node->keys[0]));
-            assert(bplus_node_remove_kv(node, node->keys[0]));
+        while (leaf->keyCount > 0) {
+            assert(bplus_node_insert_kv(leaf->leftLeaf, leaf->keys[0]));
+            assert(bplus_node_remove_kv(leaf, leaf->keys[0]));
         }
         //Remove this leaf and parent pointer (if any)
-        for(size_t i=0; i<node->parent->keyCount; i++) {
-            BPlusKV *kv = node->parent->keys[i];
-            if (kv->rightPointer == node) {
+        for (size_t i = 0; i < leaf->parent->keyCount; i++) {
+            BPlusKV *kv = leaf->parent->keys[i];
+            if (kv->rightPointer == leaf) {
                 //Remove key
-                bplus_node_remove_kv(node->parent, kv);
+                bplus_node_remove_kv(leaf->parent, kv);
                 //Update leaf pointers
-                node->leftLeaf->rightLeaf = node->rightLeaf;
-                if (node->leftLeaf->rightLeaf != NULL) {
-                    node->leftLeaf->rightLeaf->leftLeaf = node->leftLeaf;
+                leaf->leftLeaf->rightLeaf = leaf->rightLeaf;
+                if (leaf->leftLeaf->rightLeaf != NULL) {
+                    leaf->leftLeaf->rightLeaf->leftLeaf = leaf->leftLeaf;
                 }
-                node = node->leftLeaf;
-                //Free key and node
+                leaf = leaf->leftLeaf;
+                //Free key and leaf
                 free_bplus_kv(kv);
                 break;
             }
@@ -438,17 +440,60 @@ bool bplus_tree_delete(BPlusTree *tree, uint64_t key) {
     assert(merged == true);
 
     //Start merging parents where key count <= 1
-    BPlusNode *parent = node->parent;
+    BPlusNode *node = leaf->parent;
 
-    while(parent != NULL) {
+    while (node != NULL) {
 
-        if (parent->keyCount > 1) {
+        //Dont need to do anything if node has enough keys or is the root
+        if (node->keyCount > 1 || node->parent == NULL) {
             break;
         }
+        BPlusNode *left = _bplus_node_get_left_sibling(node);
+        BPlusNode *right = _bplus_node_get_right_sibling(node);
 
         //Try and borrow a key from a sibling
 
+        if (right != NULL && right->keyCount > 1) {
+            //Take the left pointer and create a new key for it
+            BPlusKV *kv = new_bplus_kv(right->leftPointer->keys[0]->key, NULL, right->leftPointer);
+            right->leftPointer->parent = node;
+            bplus_node_insert_kv(node, kv);
+            //Consume first key to populate left pointer
+            right->leftPointer = right->keys[0]->rightPointer;
+            kv = right->keys[0];
+            bplus_node_remove_kv(right, kv);
+            kv->rightPointer = NULL;
+            free_bplus_kv(kv);
+            //Update pointer key to right
+            for (size_t i = 0; i < node->parent->keyCount; i++) {
+                if (node->parent->keys[i]->rightPointer == right) {
+                    node->parent->keys[i]->key = right->keys[0]->key;
+                }
+            }
+            break;
+        }
 
+        if (left != NULL && left->keyCount > 1) {
+            //Push our left pointer to a new key
+            BPlusKV *newKV = new_bplus_kv(node->leftPointer->keys[0]->key, NULL, node->leftPointer);
+            bplus_node_insert_kv(node, newKV);
+            //Take the right key from the left sibling
+            BPlusKV *kv = left->keys[left->keyCount - 1];
+            bplus_node_remove_kv(left, kv);
+            node->leftPointer = kv->rightPointer;
+            node->leftPointer->parent = node;
+            kv->rightPointer = NULL;
+            free_bplus_kv(kv);
+            //Update our parent pointer
+            for (size_t i = 0; i < node->parent->keyCount; i++) {
+                if (node->parent->keys[i]->rightPointer == node) {
+                    node->parent->keys[i]->key = node->keys[0]->key;
+                }
+            }
+            break;
+        }
+
+        //Couldn't borrow key, merge with a sibling
 
     }
 }
