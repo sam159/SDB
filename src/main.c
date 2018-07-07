@@ -3,10 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <assert.h>
 
 #include "InputBuffer.h"
 #include "scanner.h"
 #include "parser.h"
+
+#include "bplus_tree.h"
 
 void prompt() {
     printf("SDB> ");

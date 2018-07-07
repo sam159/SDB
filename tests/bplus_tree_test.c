@@ -13,21 +13,21 @@ START_TEST(insert_keys_4)
 
         char *buffer = NULL;
 
-        ck_assert_str_eq(debug_bplus_tree_str(tree, buffer), "B+<4>[]");
+        ck_assert_str_eq(debug_bplus_tree_str(tree, buffer), "B+<4> [] ");
 
         bplus_tree_insert(tree, 10, NULL);
         bplus_tree_insert(tree, 20, NULL);
 
-        ck_assert_str_eq(debug_bplus_tree_str(tree, buffer), "B+<4>[{10*}{20*}]");
+        ck_assert_str_eq(debug_bplus_tree_str(tree, buffer), "B+<4> [{10*}{20*}] ");
 
         bplus_tree_insert(tree, 30, NULL);
         bplus_tree_insert(tree, 40, NULL);
 
-        ck_assert_str_eq(debug_bplus_tree_str(tree, buffer), "B+<4>[[{10*}{20*}]{30}[{30*}{40*}]]");
+        ck_assert_str_eq(debug_bplus_tree_str(tree, buffer), "B+<4> [ [{10*}{20*}] {30} [{30*}{40*}] ] ");
 
         bplus_tree_insert(tree, 35, NULL);
         bplus_tree_insert(tree, 50, NULL);
-        ck_assert_str_eq(debug_bplus_tree_str(tree, buffer), "B+<4>[[{10*}{20*}]{30}[{30*}{35*}]{40}[{40*}{50*}]]");
+        ck_assert_str_eq(debug_bplus_tree_str(tree, buffer), "B+<4> [ [{10*}{20*}] {30} [{30*}{35*}] {40} [{40*}{50*}] ] ");
 
         free_bplus_tree(tree);
 
@@ -63,6 +63,17 @@ START_TEST(find_keys_4)
         free_bplus_tree(tree);
     }END_TEST
 
+START_TEST(delete_key_leaf) {
+        BPlusTree *tree = new_bplus_tree(4);
+        for(uint64_t i=1;i<=16;i++) {
+            ck_assert(bplus_tree_insert(tree, i, NULL) == true);
+        }
+        for(uint64_t i=1;i<=16;i++) {
+            ck_assert(bplus_tree_delete(tree, i) == true);
+        }
+        free_bplus_tree(tree);
+}END_TEST;
+
 Suite *blus_tree_suite(void) {
     Suite *s = suite_create("B+ Tree");
 
@@ -71,6 +82,7 @@ Suite *blus_tree_suite(void) {
 
     tcase_add_test(core, insert_keys_4);
     tcase_add_test(core, find_keys_4);
+    tcase_add_test(core, delete_key_leaf);
 
     return s;
 }

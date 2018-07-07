@@ -50,3 +50,22 @@ BPlusNode *_bplus_node_get_right_sibling(BPlusNode *node) {
         return node->rightLeaf;
     }
 }
+
+void _bplus_node_check_parents(BPlusNode *parent) {
+    if (parent->leftPointer != NULL) {
+        assert(parent->leftPointer->parent == parent);
+        _bplus_node_check_parents(parent->leftPointer);
+    }
+    for (size_t i = 0; i < parent->keyCount; i++) {
+        if (parent->keys[i]->rightPointer != NULL) {
+            assert(parent->keys[i]->rightPointer->parent == parent);
+            _bplus_node_check_parents(parent->keys[i]->rightPointer);
+        }
+    }
+}
+
+void _bplus_tree_check_parents(BPlusTree *tree) {
+    assert(tree->root != NULL);
+    assert(tree->root->parent == NULL);
+    _bplus_node_check_parents(tree->root);
+}
