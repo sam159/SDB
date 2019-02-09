@@ -300,7 +300,7 @@ ParserNode *parser_parse(Parser *parser, Scanner *scanner) {
                     }
                         break;
                     default:
-                        parser_set_error(parser, "Unexpected node type", token);
+                        parser_set_error(parser, "Unexpected input, expected start of statement", token);
                         break;
                 }
             }

@@ -4,15 +4,16 @@
 #include <string.h>
 #include <strings.h>
 #include <assert.h>
+#include <time.h>
 
 #include "InputBuffer.h"
 #include "scanner.h"
 #include "parser.h"
-
-#include "bplus_tree.h"
+#include "random.h"
 
 void prompt() {
     printf("SDB> ");
+    fflush(stdout);
 }
 
 void read_input(InputBuffer *buffer) {
@@ -51,14 +52,16 @@ void parse_input(char *input) {
 
     free_scanner(scanner);
     free_parser(parser);
-
 }
 
 int main() {
-    setbuf(stdout, 0);
     setbuf(stderr, 0);
 
     InputBuffer *buffer = input_buffer_new();
+    if (!init_random()) {
+        fprintf(stderr, "Error: failed to init random device\n");
+        exit(EXIT_FAILURE);
+    }
 
     while (true) {
         prompt();
@@ -72,5 +75,6 @@ int main() {
     }
 
     input_buffer_free(buffer);
+    deinit_random();
     return EXIT_SUCCESS;
 }
