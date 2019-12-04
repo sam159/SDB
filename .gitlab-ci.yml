@@ -18,11 +18,11 @@ job_build:
     name: SDB Linux
     expire_in: 1 week
     paths:
-      - src/SDB
+      - bin/SDB
 
 job_test:
   stage: test
   script:
     - cmake .
     - make check_SDB
-    - ./tests/check_SDB
+    - ./bin/check_SDB

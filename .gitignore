@@ -79,3 +79,8 @@ build
 
 
 # End of https://www.gitignore.io/api/cmake,clion
+
+# binary files
+/bin/
+# Codeblocks project
+/SDB.cbp
