@@ -11,14 +11,14 @@
 enum ValueType_t {
     VALUE_NONE,
     VALUE_STRING,
-    VALUE_NUMBER
+    VALUE_INTEGER
 };
 typedef enum ValueType_t ValueType;
 
 struct Value_t {
     ValueType type;
     char *string;
-    int64_t number;
+    int64_t integer;
 };
 typedef struct Value_t Value;
 
@@ -98,12 +98,14 @@ typedef enum ColumnOption_t ColumnOption;
 
 enum ColumnType_t {
     COLTYPE_NONE,
-    COLTYPE_STRING,
+    COLTYPE_CHAR,
     COLTYPE_INT
 };
 typedef enum ColumnType_t ColumnType;
 
 struct ColumnSpec_t {
+    uint16_t id;
+    size_t rowOffset;
     char *identifier;
     ColumnType type;
     size_t size;
@@ -114,6 +116,8 @@ typedef struct ColumnSpec_t ColumnSpec;
 ColumnSpec *new_column_spec();
 
 void free_column_spec(ColumnSpec *spec);
+
+size_t column_spec_data_size(ColumnSpec *spec);
 
 struct ColumnSpecList_t {
     ColumnSpec **columns;

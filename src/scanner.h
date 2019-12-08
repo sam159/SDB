@@ -12,7 +12,7 @@
 #define SCANNER_TOKEN_TYPE_LIST \
     X(T_NONE) \
     X(T_STRING) \
-    X(T_NUMBER) \
+    X(T_INTEGER) \
     X(T_IDENTIFIER) \
     X(T_COMMA) \
     X(T_SEMICOLON) \
@@ -32,7 +32,7 @@
     X(T_KW_CREATE) \
     X(T_KW_TABLE) \
     X(T_KW_DROP) \
-    X(T_KW_STRING) \
+    X(T_KW_CHAR) \
     X(T_KW_INT) \
     X(T_KW_INDEX)
 

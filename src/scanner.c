@@ -168,10 +168,10 @@ ScannerToken *scanner_next_token(Scanner *scanner, ScannerToken *token) {
     else if (scanner_match(scanner, "create", true)) token->type = T_KW_CREATE;
     else if (scanner_match(scanner, "table", true)) token->type = T_KW_TABLE;
     else if (scanner_match(scanner, "drop", true)) token->type = T_KW_DROP;
-    else if (scanner_match(scanner, "string", true)) token->type = T_KW_STRING;
+    else if (scanner_match(scanner, "char", true)) token->type = T_KW_CHAR;
     else if (scanner_match(scanner, "int", true)) token->type = T_KW_INT;
     else if (scanner_match(scanner, "integer", true)) token->type = T_KW_INT;
-    else if (scanner_match(scanner, "index", true)) token->type = T_KW_INDEX;
+    else if (scanner_match(scanner, "tree", true)) token->type = T_KW_INDEX;
     if (token->type != T_NONE) {
         return token;
     }
@@ -222,7 +222,7 @@ ScannerToken *scanner_next_token(Scanner *scanner, ScannerToken *token) {
             free_scanner_token(token);
             return NULL;
         }
-        token->type = T_NUMBER;
+        token->type = T_INTEGER;
         //convert number
         token->valueInt = (int64_t) strtol(intInput, NULL, 10);
         return token;

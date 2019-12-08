@@ -5,12 +5,15 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 #include "SQL.h"
+#include "MurmurHash3.h"
+#include "random.h"
 
 Value *new_value() {
     Value *value = malloc(sizeof(Value));
     value->type = VALUE_NONE;
-    value->number = 0;
+    value->integer = 0;
     value->string = NULL;
     return value;
 }
@@ -32,7 +35,7 @@ Comparison *new_comparison() {
 
 void free_comparison(Comparison *comparison) {
     if (comparison->value != NULL) {
-        free(comparison->value);
+        free_value(comparison->value);
     }
     if (comparison->identifier != NULL) {
         free(comparison->identifier);
@@ -50,7 +53,7 @@ ComparisonGroup *new_comparision_group() {
 void free_comparison_group(ComparisonGroup *group) {
     if (group->length > 0) {
         for (size_t i = 0; i < group->length; i++) {
-            free(group->comparisons[i]);
+            free_comparison(group->comparisons[i]);
         }
         free(group->comparisons);
         group->length = 0;
@@ -131,6 +134,8 @@ void append_field_list(FieldList *list, char *field) {
 
 ColumnSpec *new_column_spec() {
     ColumnSpec *spec = malloc(sizeof(ColumnSpec));
+    spec->id = 0;
+    spec->rowOffset = 0;
     spec->identifier = NULL;
     spec->option = COLOPT_NONE;
     spec->size = 0;
@@ -143,6 +148,17 @@ void free_column_spec(ColumnSpec *spec) {
         free(spec->identifier);
     }
     free(spec);
+}
+
+size_t column_spec_data_size(ColumnSpec *spec) {
+    switch (spec->type) {
+        case COLTYPE_CHAR:
+            return (sizeof(char) * spec->size) + 1;
+        case COLTYPE_INT:
+            return sizeof(uint64_t);
+        default:
+            return 0;
+    }
 }
 
 ColumnSpecList *new_column_spec_list() {
@@ -427,8 +443,8 @@ void print_comparison_group(ComparisonGroup *group) {
 void print_column_spec_list(ColumnSpecList *list) {
     for (size_t i = 0; i < list->length; i++) {
         ColumnSpec *spec = list->columns[i];
-        if (spec->type == COLTYPE_STRING) {
-            printf("%s STRING(%ld)", spec->identifier, spec->size);
+        if (spec->type == COLTYPE_CHAR) {
+            printf("%s CHAR(%ld)", spec->identifier, spec->size);
         } else if (spec->type == COLTYPE_INT) {
             printf("%s INTEGER", spec->identifier);
         }
@@ -469,7 +485,7 @@ void print_value(Value *value) {
             }
         }
         printf("'");
-    } else if (value->type == VALUE_NUMBER) {
-        printf("%ld", value->number);
+    } else if (value->type == VALUE_INTEGER) {
+        printf("%ld", value->integer);
     }
 }

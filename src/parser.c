@@ -163,8 +163,8 @@ ColumnSpecList *parser_node_convert_column_spec_list(ParserNode *node) {
         append_column_spec_list(list, spec);
         spec->identifier = strdup(specNode->token->valueStr);
         ParserNode *colTypeNode = specNode->children[0];
-        if (colTypeNode->token->type == T_KW_STRING) {
-            spec->type = COLTYPE_STRING;
+        if (colTypeNode->token->type == T_KW_CHAR) {
+            spec->type = COLTYPE_CHAR;
             spec->size = (size_t)colTypeNode->children[0]->token->valueInt;
         } else if (colTypeNode->token->type == T_KW_INT) {
             spec->type = COLTYPE_INT;
@@ -212,9 +212,9 @@ Value *parser_node_convert_value(ParserNode *node) {
     if (node->token->type == T_STRING) {
         value->type = VALUE_STRING;
         value->string = strdup(node->token->valueStr);
-    } else if (node->token->type == T_NUMBER) {
-        value->type = VALUE_NUMBER;
-        value->number = node->token->valueInt;
+    } else if (node->token->type == T_INTEGER) {
+        value->type = VALUE_INTEGER;
+        value->integer = node->token->valueInt;
     }
     return value;
 }
@@ -536,22 +536,22 @@ ParserNode *parser_parse(Parser *parser, Scanner *scanner) {
                     token = NULL;
                     append_parser_node(node, columnSpec);
                     NEXT_TOKEN();
-                    if (token == NULL || (token->type != T_KW_STRING && token->type != T_KW_INT)) {
+                    if (token == NULL || (token->type != T_KW_CHAR && token->type != T_KW_INT)) {
                         parser_set_error(parser, "Expected one of STRING, INT, INTEGER", token);
                         break;
                     }
-                    if (token->type == T_KW_STRING) {
+                    if (token->type == T_KW_CHAR) {
                         ParserNode *columnType = new_parser_node(NODE_COLUMN_TYPE, token);
                         token = NULL;
                         append_parser_node(columnSpec, columnType);
                         EXPECT(T_PAREN_OPEN);
                         NEXT_TOKEN();
-                        if (token == NULL || token->type != T_NUMBER) {
-                            parser_set_error(parser, "Expected number", token);
+                        if (token == NULL || token->type != T_INTEGER) {
+                            parser_set_error(parser, "Expected integer", token);
                             break;
                         }
                         if (token->valueInt < 1) {
-                            parser_set_error(parser, "Expected positive number", token);
+                            parser_set_error(parser, "Expected positive integer", token);
                             break;
                         }
                         append_parser_node(columnType, new_parser_node(NODE_COLUMN_TYPE_SPECIFIER, token));
@@ -599,7 +599,7 @@ ParserNode *parser_parse(Parser *parser, Scanner *scanner) {
                     append_parser_node(node, assignment);
                     EXPECT(T_COMP_EQ);
                     NEXT_TOKEN();
-                    if (token == NULL || (token->type != T_STRING && token->type != T_NUMBER)) {
+                    if (token == NULL || (token->type != T_STRING && token->type != T_INTEGER)) {
                         parser_set_error(parser, "Expected value", token);
                         break;
                     }
@@ -669,7 +669,7 @@ ParserNode *parser_parse(Parser *parser, Scanner *scanner) {
                             }
                             break;
                         case 2:
-                            if (token->type == T_STRING || token->type == T_NUMBER) {
+                            if (token->type == T_STRING || token->type == T_INTEGER) {
                                 append_parser_node(node, new_parser_node(NODE_VALUE, token));
                                 token = NULL;
                                 node->phase = -1;
@@ -742,7 +742,7 @@ void parser_print_node_tree(ParserNode *node, size_t indent) {
             case T_STRING:
                 printf("<%s>", node->token->valueStr);
                 break;
-            case T_NUMBER:
+            case T_INTEGER:
                 printf("<%ld>", node->token->valueInt);
                 break;
             default:

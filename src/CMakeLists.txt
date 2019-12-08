@@ -7,7 +7,7 @@ add_library(SDBLib STATIC
         scanner.c scanner.h
         parser.c parser.h
         bplus_tree.c bplus_tree.h
-        ../lib/MurmurHash3.c ../lib/MurmurHash3.h random.c random.h)
+        ../lib/MurmurHash3.c ../lib/MurmurHash3.h random.c random.h Table.c Table.h)
 
 add_executable(SDB main.c)
 target_link_libraries(SDB SDBLib)

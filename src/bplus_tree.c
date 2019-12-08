@@ -77,7 +77,7 @@ bool bplus_node_insert_kv(BPlusNode *node, BPlusKV *kv) {
         return true;
     }
 
-    //Find an index where we should insert
+    //Find an tree where we should insert
     size_t i;
     for (i = 0; i < node->keyCount; i++) {
         if (kv->key < node->keys[i]->key) {

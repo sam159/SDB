@@ -17,7 +17,7 @@ DropStmt = 'Drop Table', Identifier ;
 
 ColumnSpecList = ColumnSpec | ColumnSpecList, ',', ColumnSpec ;
 ColumnSpec = Identifier, ColumnType | Identifier, ColumnType, ColumnOption ;
-ColumnType = 'String', '(', number, ')' | 'Int' | 'Integer' ;
+ColumnType = 'String', '(', integer, ')' | 'Int' | 'Integer' ;
 ColumnOption = 'Index' ;
 
 FieldList = Identifier | FieldList, ',', Identifier ;
@@ -29,4 +29,4 @@ Comparison = Identifier, Comparator, Value;
 Comparator = '=' | '<>';
 
 Identifier = { letter, '_' } , { letter | digit | '_' } ;
-Value = "'", string, "'" | '"', string, '"' | number ;
+Value = "'", string, "'" | '"', string, '"' | integer ;
